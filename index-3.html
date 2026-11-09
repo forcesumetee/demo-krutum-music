@@ -1,0 +1,1358 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ห้องดนตรีครูตั้ม</title>
+<meta name="description" content="ต้นแบบเว็บฝึกดนตรี: เลือกเครื่องดนตรี เลือกเพลง เลือกระดับ แล้วเล่นตามคลิปพร้อม Tab คอร์ด และโน้ตที่เลื่อนตามเสียง">
+<meta name="theme-color" content="#111110">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%23f0b44c%22/%3E%3Ccircle cx=%2219%22 cy=%2230%22 r=%229%22 fill=%22%23241703%22/%3E%3Cpath d=%22M22 27L36 10%22 stroke=%22%23241703%22 stroke-width=%224%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#111110; --card:#1b1a18; --card-2:#24221f; --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
+  --text:#f4f1ea; --muted:#a8a398; --faint:#6f6b63;
+  --accent:#f0b44c; --accent-2:#ff8a5c; --accent-ink:#241703; --accent-soft:rgba(240,180,76,.14);
+  --teal:#5cc8b0; --danger:#ef6f5e;
+  --paper:#fffdf8; --radius:16px; --gut:16px;
+  --ease:cubic-bezier(.2,.8,.2,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f5f2ea; --card:#ffffff; --card-2:#efebe1; --line:rgba(0,0,0,.08); --line-2:rgba(0,0,0,.16);
+    --text:#1d1b17; --muted:#6a655b; --faint:#9a9488;
+    --accent:#c4831a; --accent-2:#e2683a; --accent-ink:#fffaf0; --accent-soft:rgba(196,131,26,.13);
+    --teal:#13866d; --paper:#ffffff; color-scheme: light;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:"IBM Plex Sans Thai",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+.wrap{max-width:560px;margin:0 auto;padding:0 var(--gut) 56px}
+
+/* ---------- การเคลื่อนไหวพื้นฐาน ---------- */
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.45)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes ripple{from{transform:scale(.6);opacity:.8}to{transform:scale(2.4);opacity:0}}
+@keyframes chordIn{from{opacity:0;transform:translateY(40%) scale(.92);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+@keyframes shimmer{to{background-position:-200% 0}}
+@keyframes floatUp{0%{transform:translate(0,0) rotate(0);opacity:0}15%{opacity:.55}100%{transform:translate(var(--dx),-180px) rotate(var(--rot));opacity:0}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(240,180,76,.55)}100%{box-shadow:0 0 0 18px rgba(240,180,76,0)}}
+@keyframes wiggle{0%,100%{transform:rotate(0)}30%{transform:rotate(-10deg) scale(1.08)}60%{transform:rotate(6deg) scale(1.04)}}
+@keyframes vib{0%,100%{transform:translateY(0)}25%{transform:translateY(-1.4px)}75%{transform:translateY(1.4px)}}
+@keyframes fadeSwap{0%{opacity:1}40%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:none}}
+.reveal{animation:rise .55s var(--ease) both;animation-delay:calc(var(--i,0) * 55ms)}
+::view-transition-old(root){animation:.18s ease both fadeOut}
+::view-transition-new(root){animation:.32s var(--ease) both rise}
+@keyframes fadeOut{to{opacity:0}}
+
+.topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
+.topbar .in{max-width:560px;margin:0 auto;padding:10px var(--gut);display:flex;align-items:center;gap:10px;min-height:58px}
+.iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;flex:none;transition:transform .2s var(--spring),border-color .2s}
+.iconbtn:active{transform:scale(.9)}
+.iconbtn svg{width:20px;height:20px}
+.tb-title{min-width:0;flex:1}
+.tb-title b{display:block;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-title small{display:block;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- หน้าแรก ---------- */
+.hero{position:relative;padding:30px 0 18px}
+.notesfx{position:absolute;inset:-10px -16px 0;pointer-events:none;overflow:hidden;z-index:0}
+.notesfx span{position:absolute;bottom:0;color:var(--accent);filter:opacity(.6);font-size:var(--fs);animation:floatUp var(--dur) linear infinite;animation-delay:var(--delay);opacity:0}
+.hero > *:not(.notesfx){position:relative;z-index:1}
+.brandmark{display:flex;align-items:center;gap:10px;color:var(--accent);font-weight:600;font-size:14px;letter-spacing:.02em}
+.brandmark svg{width:24px;height:24px;animation:wiggle 2.4s var(--ease) 1s both}
+.hero h1{font-size:30px;line-height:1.22;margin:10px 0 6px;font-weight:600}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{margin:0;color:var(--muted)}
+.stats{display:flex;gap:26px;margin-top:14px;font-size:13px;color:var(--muted)}
+.stats b{display:block;font-size:22px;color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.search{margin:18px 0 6px;position:relative}
+.search input{width:100%;height:50px;border-radius:16px;border:1px solid var(--line);background:var(--card);padding:0 14px 0 46px;outline:none;transition:border-color .2s,box-shadow .2s}
+.search input:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.search svg{position:absolute;left:15px;top:15px;width:20px;height:20px;color:var(--faint)}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;margin:24px 0 10px;gap:12px}
+.sec-h h2{font-size:17px;margin:0;font-weight:600}
+.sec-h span{font-size:13px;color:var(--muted);text-align:right}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.cat{position:relative;display:flex;flex-direction:column;gap:14px;padding:16px;border-radius:var(--radius);background:var(--card);border:1px solid var(--line);text-decoration:none;min-height:150px;overflow:hidden;transition:transform .25s var(--spring),border-color .2s}
+.cat::after{content:"";position:absolute;inset:auto -30% -60% auto;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,var(--accent-soft),transparent 70%);transition:transform .5s var(--ease)}
+.cat:hover::after{transform:scale(1.4)}
+.cat:active{transform:scale(.96)}
+.cat:hover{border-color:var(--line-2)}
+.cat:hover .ic svg,.cat:focus-visible .ic svg{animation:wiggle .6s var(--ease)}
+.cat .ic{width:54px;height:54px;border-radius:15px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.cat .ic svg{width:36px;height:36px}
+.cat b{font-weight:600;font-size:17px;display:block}
+.cat small{color:var(--muted);font-size:13px}
+.cat .count{position:absolute;top:14px;right:14px;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.cat.soon{opacity:.5;pointer-events:none}
+.cat.soon .ic{background:var(--card-2);color:var(--muted)}
+.rail-x{display:flex;gap:12px;overflow-x:auto;padding:2px var(--gut) 8px;margin:0 calc(-1 * var(--gut));scroll-snap-type:x mandatory;scrollbar-width:none}
+.rail-x::-webkit-scrollbar{display:none}
+.tunecard{flex:none;width:220px;scroll-snap-align:start;border-radius:var(--radius);padding:16px;background:linear-gradient(160deg,var(--card-2),var(--card));border:1px solid var(--line);text-decoration:none;display:flex;flex-direction:column;gap:10px;transition:transform .25s var(--spring)}
+.tunecard:active{transform:scale(.97)}
+.tunecard b{font-weight:600;line-height:1.3}
+.tunecard small{color:var(--muted);font-size:12.5px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mini-ic{display:flex;gap:6px;margin-top:auto}
+.mini-ic span{width:28px;height:28px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.mini-ic svg{width:20px;height:20px}
+.footer-link{display:flex;align-items:center;justify-content:space-between;margin-top:24px;padding:14px 16px;border-radius:var(--radius);border:1px dashed var(--line-2);color:var(--muted);text-decoration:none;font-size:14px}
+.footer-link b{color:var(--text);font-weight:500}
+
+/* ---------- รายการเพลง ---------- */
+.cat-head{display:flex;gap:14px;align-items:center;padding:22px 0 8px}
+.cat-head .ic{width:62px;height:62px;border-radius:18px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+.cat-head .ic svg{width:40px;height:40px;animation:wiggle .9s var(--ease) .2s both}
+.cat-head h1{margin:0;font-size:24px;font-weight:600;line-height:1.25}
+.cat-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.songs{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.song{display:flex;gap:14px;align-items:center;padding:14px;border-radius:var(--radius);background:var(--card);border:1px solid var(--line);text-decoration:none;transition:transform .25s var(--spring),border-color .2s}
+.song:active{transform:scale(.98)}
+.song:hover{border-color:var(--line-2)}
+.song .thumb{width:54px;height:54px;border-radius:14px;background:var(--accent-soft);display:grid;place-items:center;color:var(--accent);flex:none;transition:transform .3s var(--spring)}
+.song:hover .thumb{transform:rotate(-6deg) scale(1.06)}
+.song .thumb svg{width:20px;height:20px;margin-left:2px}
+.song .meta{min-width:0;flex:1}
+.song b{display:block;font-weight:600;line-height:1.35}
+.song small{display:block;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song > svg{flex:none;color:var(--faint);transition:transform .25s var(--ease)}
+.song:hover > svg{transform:translateX(3px)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.tag{font-size:12px;line-height:1;padding:5px 8px;border-radius:999px;background:var(--card-2);color:var(--muted)}
+.tag.ac{background:var(--accent-soft);color:var(--accent)}
+.empty{padding:28px 16px;text-align:center;color:var(--muted);border:1px dashed var(--line-2);border-radius:var(--radius)}
+
+/* ---------- เวที (คลิปจำลอง) ---------- */
+.stage{position:relative;margin-top:14px;aspect-ratio:16/10;border-radius:20px;overflow:hidden;background:radial-gradient(120% 90% at 20% 0%,#2b2419 0%,#121110 55%,#0b0b0a 100%);border:1px solid var(--line);color:#f4f1ea;user-select:none;isolation:isolate}
+.stage .chip{position:absolute;top:12px;left:12px;font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.1);color:#d8d3c8;z-index:3;display:flex;align-items:center;gap:6px}
+.stage .chip i{width:7px;height:7px;border-radius:50%;background:#7d776c}
+.stage.playing .chip i{background:#ef6f5e;animation:pulse 1.4s infinite}
+.stage .label{position:absolute;left:14px;top:42px;right:90px;font-size:13px;color:#bdb7ab;line-height:1.35;z-index:3}
+.stage .label b{display:block;color:#fff;font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage .nowchord{position:absolute;top:10px;right:10px;min-width:52px;text-align:center;font-weight:600;font-size:20px;padding:6px 12px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#241703;z-index:3;box-shadow:0 6px 20px rgba(240,140,60,.3)}
+.stage .nowchord:empty{display:none}
+.stage .nowchord.flip{animation:chordIn .35s var(--ease)}
+.stage .viz{position:absolute;left:0;right:0;bottom:30px;z-index:1}
+.stage .viz svg{display:block;width:100%;height:auto}
+.stage .bigplay{position:absolute;left:50%;top:44%;width:66px;height:66px;margin:-33px 0 0 -33px;border-radius:50%;border:0;background:rgba(20,18,15,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:grid;place-items:center;color:#fff;z-index:4;transition:opacity .3s,transform .3s var(--spring);box-shadow:0 0 0 1px rgba(255,255,255,.2)}
+.stage .bigplay svg{width:28px;height:28px;margin-left:3px}
+.stage.playing .bigplay{opacity:0;transform:scale(.6);pointer-events:none}
+.stage .bot{position:absolute;left:12px;right:12px;bottom:8px;display:flex;justify-content:space-between;align-items:center;z-index:3;font-size:12.5px;color:#cfc9bd;font-variant-numeric:tabular-nums}
+.stage .eq{display:flex;align-items:flex-end;gap:3px;height:16px}
+.stage .eq i{display:block;width:3px;height:4px;border-radius:2px;background:var(--accent)}
+.stage.playing .eq i{animation:eqb .9s ease-in-out infinite}
+.stage .eq i:nth-child(2){animation-delay:-.3s}.stage .eq i:nth-child(3){animation-delay:-.6s}.stage .eq i:nth-child(4){animation-delay:-.15s}
+@keyframes eqb{0%,100%{height:4px}50%{height:16px}}
+/* คอกีตาร์ */
+.fb-wood{fill:#2a1d14}
+.fb-fret{stroke:#bba98c;stroke-width:2}
+.fb-nut{fill:#e9e0cd}
+.fb-inlay{fill:#e9e0cd;opacity:.35}
+.fb-str{stroke:#d9cfbd;stroke-linecap:round}
+.fb-str.vib{animation:vib .09s linear 4}
+.fb-lab{fill:#9b9385;font-size:13px;font-family:inherit}
+.ghost{fill:#f0b44c;opacity:.22;transition:opacity .3s}
+.hit{transform-box:fill-box;transform-origin:center;animation:pop .32s var(--spring) both}
+.hit-dot{fill:url(#hitgrad);stroke:#fff3d6;stroke-width:1.5}
+.hit-ring{fill:none;stroke:#ffcf7a;stroke-width:2;transform-box:fill-box;transform-origin:center;animation:ripple .6s var(--ease) forwards}
+.hit-txt{fill:#241703;font-size:13px;font-weight:600;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+/* คีย์บอร์ด */
+.k-w{fill:#f6f1e6;stroke:#6f6758;stroke-width:1;transition:fill .12s}
+.k-b{fill:#1d1a16;transition:fill .12s}
+.k-w.down{fill:#f0b44c}
+.k-b.down{fill:#ff8a5c}
+.k-glow{fill:#ffcf7a;opacity:0}
+.k-glow.on{animation:keyglow .5s var(--ease)}
+@keyframes keyglow{0%{opacity:.75}100%{opacity:0}}
+
+/* ---------- ตัวควบคุม ---------- */
+.vers{margin-top:14px}
+.vers .lab{font-size:13px;color:var(--muted);margin:0 2px 6px;display:flex;justify-content:space-between}
+.chips{position:relative;display:flex;gap:4px;padding:4px;border-radius:16px;background:var(--card);border:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips .ind{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));transition:transform .45s var(--spring),width .45s var(--spring);z-index:0;box-shadow:0 4px 14px rgba(240,140,60,.25)}
+.chips button{position:relative;z-index:1;flex:1 0 auto;min-width:88px;padding:8px 12px;border:0;border-radius:12px;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;line-height:1.25;transition:color .3s}
+.chips button b{font-weight:600;font-size:15px}
+.chips button small{font-size:11.5px;opacity:.85}
+.chips button.on{color:var(--accent-ink)}
+.vnote{font-size:13px;color:var(--muted);margin:8px 2px 0;min-height:20px}
+.vnote.swap{animation:fadeSwap .4s var(--ease)}
+
+.transport{margin-top:14px;display:flex;align-items:center;gap:12px}
+.playbtn{position:relative;width:56px;height:56px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--accent-ink);display:grid;place-items:center;flex:none;transition:transform .2s var(--spring);box-shadow:0 8px 22px rgba(240,140,60,.28)}
+.playbtn:active{transform:scale(.9)}
+.playbtn.playing{animation:pulse 1.6s infinite}
+.playbtn svg{width:24px;height:24px}
+.playbtn[disabled]{opacity:.45;box-shadow:none}
+.playbtn .spin{position:absolute;inset:-4px;border-radius:50%;border:2px solid transparent;border-top-color:var(--accent);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.playbtn:not([disabled]) .spin{display:none}
+.seekwrap{flex:1;min-width:0}
+.seek{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0;--p:0%}
+.seek::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:linear-gradient(90deg,var(--accent) var(--p),var(--card-2) var(--p))}
+.seek::-moz-range-track{height:6px;border-radius:6px;background:linear-gradient(90deg,var(--accent) var(--p),var(--card-2) var(--p))}
+.seek::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;margin-top:-6px;box-shadow:0 2px 8px rgba(0,0,0,.35);transition:transform .2s var(--spring)}
+.seek:active::-webkit-slider-thumb{transform:scale(1.3)}
+.seek::-moz-range-thumb{width:18px;height:18px;border:0;border-radius:50%;background:#fff}
+.times{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:-2px}
+.status{font-size:12.5px;color:var(--muted);margin-top:6px;min-height:18px}
+.opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pill{height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);transition:background .25s,color .25s,transform .2s var(--spring)}
+.pill:active{transform:scale(.93)}
+.pill svg{width:16px;height:16px}
+.pill.on{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.pill.on svg{animation:wiggle .5s var(--ease)}
+.speed{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--card)}
+.speed button{height:34px;padding:0 11px;border:0;background:transparent;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;transition:background .25s,color .25s}
+.speed button.on{background:var(--accent-soft);color:var(--accent)}
+
+.seg{position:relative;margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);padding:4px;border-radius:16px;background:var(--card);border:1px solid var(--line)}
+.seg .ind{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/3);border-radius:12px;background:var(--card-2);box-shadow:inset 0 0 0 1px var(--line-2);transition:transform .45s var(--spring)}
+.seg button{position:relative;z-index:1;height:44px;border:0;border-radius:12px;background:transparent;color:var(--muted);font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;transition:color .25s}
+.seg button svg{width:18px;height:18px;transition:transform .35s var(--spring)}
+.seg button.on{color:var(--text)}
+.seg button.on svg{transform:scale(1.15);color:var(--accent)}
+.seg button[disabled]{opacity:.3;cursor:not-allowed}
+.hint{font-size:12.5px;color:var(--faint);margin:8px 2px 0}
+
+.paper{position:relative;margin-top:12px;border-radius:var(--radius);background:var(--paper);overflow:hidden;border:1px solid var(--line);transition:opacity .25s}
+.paper.swap{animation:fadeSwap .5s var(--ease)}
+.paper .scroll{overflow:auto;max-height:64vh;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.paper.tabmode .scroll{max-height:none;overflow-y:hidden}
+.paper.offstage{position:absolute;left:-10000px;top:0;width:calc(min(560px,100vw) - 2*var(--gut));visibility:hidden}
+.paper .loading{position:absolute;inset:0;background:var(--paper);z-index:3;padding:22px 18px;display:flex;flex-direction:column;gap:14px}
+.paper .loading[hidden]{display:none}
+.paper .loading i{display:block;height:46px;border-radius:8px;background:linear-gradient(90deg,#f1ece2 25%,#faf7f0 50%,#f1ece2 75%);background-size:200% 100%;animation:shimmer 1.2s linear infinite}
+.paper .loading i:nth-child(2){width:86%}.paper .loading i:nth-child(3){width:94%}
+.paper .at-cursor-bar{background:rgba(240,180,76,.22)!important;transition:all .12s linear}
+.paper .at-cursor-beat{background:#e2553f!important;width:3px!important;border-radius:2px;box-shadow:0 0 8px rgba(226,85,63,.6)}
+.paper .at-selection div{background:rgba(92,200,176,.22)!important}
+.paper .at-highlight *{fill:#d9480f;stroke:#d9480f}
+
+/* ---------- มุมมองคอร์ด ---------- */
+.cv{margin-top:12px}
+.strip{position:relative;overflow-x:auto;overflow-y:hidden;border-radius:14px;border:1px solid var(--line);background:var(--card);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.strip::-webkit-scrollbar{display:none}
+.strip .rail{position:relative;display:flex;height:58px}
+.strip .s{flex:none;border:0;border-right:1px solid var(--line);background:transparent;color:var(--muted);font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;padding:0;transition:background .3s,color .3s}
+.strip .s.on{background:var(--accent-soft);color:var(--accent)}
+.strip .ph{position:absolute;top:0;bottom:0;width:3px;border-radius:2px;background:var(--danger);left:0;pointer-events:none;will-change:transform;box-shadow:0 0 10px rgba(239,111,94,.7)}
+.now{margin-top:12px;display:flex;align-items:center;gap:12px;padding:16px;border-radius:var(--radius);background:var(--card);border:1px solid var(--line);overflow:hidden}
+.now .l{flex:1;min-width:0}
+.now small{color:var(--muted);font-size:13px}
+.now .name{font-size:54px;line-height:1.05;font-weight:600;letter-spacing:-.01em}
+.now .name.flip{animation:chordIn .4s var(--ease)}
+.now .next{color:var(--muted);font-size:15px;margin-top:4px}
+.now .next b{color:var(--text);font-weight:600}
+.now .d{flex:none;width:150px}
+.now .d svg{width:100%;height:auto;display:block}
+.now .d .dot{transform-box:fill-box;transform-origin:center;animation:pop .4s var(--spring) both}
+.allch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.allch button{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:8px 6px 6px;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:2px;transition:border-color .3s,background .3s,transform .25s var(--spring)}
+.allch button:active{transform:scale(.95)}
+.allch button.on{border-color:var(--accent);background:var(--accent-soft)}
+.allch b{font-weight:600}
+.allch svg{width:100%;max-width:96px;height:auto}
+.allch .dot{animation:none}
+.tones{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.tones span{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--card-2);color:var(--muted);animation:pop .3s var(--spring) both}
+
+.card{margin-top:16px;padding:16px;border-radius:var(--radius);background:var(--card);border:1px solid var(--line)}
+.card h3{margin:0 0 6px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h3 svg{width:18px;height:18px;color:var(--accent)}
+.card p{margin:0;color:var(--muted);font-size:14.5px}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.fact{padding:10px 12px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
+.fact small{display:block;font-size:12px;color:var(--muted)}
+.fact b{font-weight:600;font-size:15px}
+.other-inst{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.other-inst a{display:flex;align-items:center;gap:8px;padding:8px 12px 8px 8px;border-radius:999px;background:var(--card);border:1px solid var(--line);text-decoration:none;font-size:14px;transition:transform .25s var(--spring),border-color .2s}
+.other-inst a:active{transform:scale(.94)}
+.other-inst a span{width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.other-inst svg{width:20px;height:20px}
+
+/* ---------- หน้าครู ---------- */
+.banner{margin-top:16px;padding:12px 14px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font-size:14px}
+.step{margin-top:14px;padding:16px;border-radius:var(--radius);background:var(--card);border:1px solid var(--line)}
+.step h3{margin:0 0 12px;font-size:16px;font-weight:600;display:flex;gap:10px;align-items:center}
+.step h3 i{font-style:normal;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:13px;flex:none}
+.field{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.field label{font-size:13px;color:var(--muted)}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 12px;outline:none;width:100%;transition:border-color .2s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.vlist{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.vlist label{display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;color:var(--text)}
+.drop{border:1.5px dashed var(--line-2);border-radius:12px;padding:18px;text-align:center;color:var(--muted);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:border-color .2s,background .2s}
+.drop:hover{border-color:var(--accent);background:var(--accent-soft)}
+.drop svg{width:26px;height:26px;color:var(--accent)}
+.drop b{color:var(--text);font-weight:500}
+.wave{position:relative;height:96px;border-radius:10px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin-top:6px}
+.wave svg{position:absolute;inset:0;width:100%;height:100%}
+.primary{width:100%;height:52px;border-radius:16px;border:0;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--accent-ink);font-weight:600;margin-top:18px;transition:transform .2s var(--spring)}
+.primary:active{transform:scale(.97)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;background:#2a2824;color:#f4f1ea;padding:10px 16px;border-radius:12px;font-size:14px;transition:all .35s var(--spring);z-index:50;max-width:calc(100vw - 32px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .notesfx{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app" aria-live="polite"></div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+/* ===================================================================
+   ตัวสร้างโน้ต: เขียนทำนอง + คอร์ดครั้งเดียว แล้วสร้างให้ทุกเครื่อง
+   (ในเว็บจริง ครูอัปไฟล์ Guitar Pro / MusicXML แทนส่วนนี้)
+   =================================================================== */
+
+/* ---------- เพลง: ทำนองที่เป็นสาธารณสมบัติ ---------- */
+const TUNES = [
+  {
+    id: 'twinkle', by: 'เพลงพื้นบ้าน', title: 'Twinkle Twinkle Little Star', origin: 'เพลงพื้นบ้าน · ทำนองเดียวกับที่โมซาร์ทนำไปแปร (K.265)',
+    ts: [4, 4], tempo: 92, key: 'C',
+    melody: `C4/4 C4/4 G4/4 G4/4 | A4/4 A4/4 G4/2 | F4/4 F4/4 E4/4 E4/4 | D4/4 D4/4 C4/2 |
+             G4/4 G4/4 F4/4 F4/4 | E4/4 E4/4 D4/2 | G4/4 G4/4 F4/4 F4/4 | E4/4 E4/4 D4/2 |
+             C4/4 C4/4 G4/4 G4/4 | A4/4 A4/4 G4/2 | F4/4 F4/4 E4/4 E4/4 | D4/4 D4/4 C4/2`,
+    chords: 'C | F C | F C | G C | C F | C G | C F | C G | C | F C | F C | G C',
+    lyrics: 'ดาว น้อย ดาว น้อย ส่อง แสง ใส อยู่ บน ฟ้า กว้าง ไกล แสน ไกล เหมือน เพชร เม็ด งาม พราว ใน ฟ้า ยาม ค่ำ คืน นี้ ฉัน ร้อง หา ดาว น้อย ดาว น้อย ส่อง แสง ใส อยู่ บน ฟ้า กว้าง ไกล แสน ไกล',
+    on: ['piano', 'acoustic', 'violin', 'ukulele', 'bass']
+  },
+  {
+    id: 'ode', by: 'เบโธเฟน', title: 'Ode to Joy', origin: 'ทำนอง: เบโธเฟน (สาธารณสมบัติ)',
+    ts: [4, 4], tempo: 96, key: 'C',
+    melody: `E4/4 E4/4 F4/4 G4/4 | G4/4 F4/4 E4/4 D4/4 | C4/4 C4/4 D4/4 E4/4 | E4/4. D4/8 D4/2 |
+             E4/4 E4/4 F4/4 G4/4 | G4/4 F4/4 E4/4 D4/4 | C4/4 C4/4 D4/4 E4/4 | D4/4. C4/8 C4/2 |
+             D4/4 D4/4 E4/4 C4/4 | D4/4 E4/8 F4/8 E4/4 C4/4 | D4/4 E4/8 F4/8 E4/4 D4/4 | C4/4 D4/4 G3/2 |
+             E4/4 E4/4 F4/4 G4/4 | G4/4 F4/4 E4/4 D4/4 | C4/4 C4/4 D4/4 E4/4 | D4/4. C4/8 C4/2`,
+    chords: 'C | G | C | G | C | G | C | G C | G C | G C | G C | C G | C | G | C | G C',
+    lyrics: 'เช้า วัน ใหม่ ส่อง แสง สด ใส ฟ้า สี คราม ลม พัด เย็น ฉ่ำ ใจ หยิบ กี ตาร์ ขึ้น มา ดีด เล่น เพลง ร้อง ด้วย กัน ทุก คน สุข ใจ ลม พัด มา ไกล ผ่าน ทุ่ง นา กว้าง ใหญ่ ดอก ไม้ บาน สะ พรั่ง ทั่ว ทุก ที่ หยิบ กี ตาร์ ขึ้น มา ดีด เล่น เพลง ร้อง ด้วย กัน ทุก คน สุข ใจ',
+    on: ['piano', 'acoustic', 'violin', 'bass', 'electric']
+  },
+  {
+    id: 'mary', by: 'เพลงพื้นบ้าน', title: 'Mary Had a Little Lamb', origin: 'เพลงพื้นบ้าน (สาธารณสมบัติ)',
+    ts: [4, 4], tempo: 100, key: 'C',
+    melody: `E4/4 D4/4 C4/4 D4/4 | E4/4 E4/4 E4/2 | D4/4 D4/4 D4/2 | E4/4 G4/4 G4/2 |
+             E4/4 D4/4 C4/4 D4/4 | E4/4 E4/4 E4/4 E4/4 | D4/4 D4/4 E4/4 D4/4 | C4/1`,
+    chords: 'C | C | G | C | C | C | G | C',
+    on: ['piano', 'acoustic', 'ukulele', 'violin']
+  },
+  {
+    id: 'london', by: 'เพลงพื้นบ้านอังกฤษ', title: 'London Bridge', origin: 'เพลงพื้นบ้านอังกฤษ (สาธารณสมบัติ)',
+    ts: [4, 4], tempo: 104, key: 'C',
+    melody: `G4/4. A4/8 G4/4 F4/4 | E4/4 F4/4 G4/2 | D4/4 E4/4 F4/2 | E4/4 F4/4 G4/2 |
+             G4/4. A4/8 G4/4 F4/4 | E4/4 F4/4 G4/2 | D4/2 G4/2 | E4/4 C4/2.`,
+    chords: 'C | C | G | C | C | C | G | C',
+    on: ['piano', 'acoustic', 'ukulele', 'violin']
+  },
+  {
+    id: 'jingle', by: 'J. Pierpont', title: 'Jingle Bells', origin: 'J. Pierpont, 1857 (สาธารณสมบัติ) · ท่อนฮุก',
+    ts: [4, 4], tempo: 116, key: 'C',
+    melody: `E4/4 E4/4 E4/2 | E4/4 E4/4 E4/2 | E4/4 G4/4 C4/4. D4/8 | E4/1 |
+             F4/4 F4/4 F4/4. F4/8 | F4/4 E4/4 E4/4 E4/8 E4/8 | E4/4 D4/4 D4/4 E4/4 | D4/2 G4/2 |
+             E4/4 E4/4 E4/2 | E4/4 E4/4 E4/2 | E4/4 G4/4 C4/4. D4/8 | E4/1 |
+             F4/4 F4/4 F4/4 F4/4 | F4/4 E4/4 E4/4 E4/8 E4/8 | G4/4 G4/4 F4/4 D4/4 | C4/1`,
+    chords: 'C | C | C | C | F | C | D7 | G | C | C | C | C | F | C | G7 | C',
+    on: ['piano', 'acoustic', 'ukulele', 'bass', 'electric']
+  },
+  {
+    id: 'grace', by: 'ทำนองพื้นบ้าน', title: 'Amazing Grace', origin: 'ทำนองพื้นบ้าน (สาธารณสมบัติ) · จังหวะ 3/4',
+    ts: [3, 4], tempo: 84, key: 'G',
+    melody: `r/2 D4/4 | G4/2 B4/8 G4/8 | B4/2 A4/4 | G4/2 E4/4 | D4/2 D4/4 | G4/2 B4/8 G4/8 | B4/2 A4/4 | D5/2 B4/4 |
+             D5/2 B4/8 G4/8 | B4/2 A4/4 | G4/2 E4/4 | D4/2 D4/4 | G4/2 B4/8 G4/8 | B4/2 A4/4 | G4/2.`,
+    chords: 'G | G | G | C | G | G | Em | D | G | G | C | G | G | D | G',
+    on: ['piano', 'acoustic', 'ukulele', 'violin', 'bass']
+  },
+  {
+    id: 'canon', by: 'ปาเคลเบล', title: 'Canon in D', origin: 'ปาเคลเบล (สาธารณสมบัติ) · ทางคอร์ดยอดนิยม',
+    ts: [4, 4], tempo: 72, key: 'D',
+    melody: `F#4/2 E4/2 | D4/2 C#4/2 | B3/2 A3/2 | B3/2 C#4/2 |
+             D4/2 C#4/2 | B3/2 A3/2 | G3/2 F#3/2 | G3/2 E3/2 |
+             F#4/2 E4/2 | D4/2 C#4/2 | B3/2 A3/2 | B3/2 C#4/2 | D4/1`,
+    chords: 'D A | Bm F#m | G D | G A | D A | Bm F#m | G D | G A | D A | Bm F#m | G D | G A | D',
+    on: ['piano', 'acoustic', 'ukulele', 'violin', 'bass']
+  },
+  {
+    id: 'minuet', by: 'C. Petzold', title: 'Minuet in G', origin: 'C. Petzold (สาธารณสมบัติ) · จังหวะ 3/4',
+    ts: [3, 4], tempo: 100, key: 'G',
+    melody: `D5/4 G4/8 A4/8 B4/8 C5/8 | D5/4 G4/4 G4/4 | E5/4 C5/8 D5/8 E5/8 F#5/8 | G5/4 G4/4 G4/4 |
+             C5/4 D5/8 C5/8 B4/8 A4/8 | B4/4 C5/8 B4/8 A4/8 G4/8 | F#4/4 G4/8 A4/8 B4/8 G4/8 | A4/2. |
+             D5/4 G4/8 A4/8 B4/8 C5/8 | D5/4 G4/4 G4/4 | E5/4 C5/8 D5/8 E5/8 F#5/8 | G5/4 G4/4 G4/4 |
+             C5/4 D5/8 C5/8 B4/8 A4/8 | B4/4 C5/8 B4/8 A4/8 G4/8 | A4/4 B4/8 A4/8 G4/8 F#4/8 | G4/2.`,
+    chords: 'G | G | C | G | C | G | D | D | G | G | C | G | C | G | D | G',
+    on: ['piano', 'acoustic', 'violin']
+  }
+];
+
+/* ---------- ทฤษฎีพื้นฐาน ---------- */
+const STEP = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const NAMES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const KEY_PC = { C: [0, 2, 4, 5, 7, 9, 11], G: [7, 9, 11, 0, 2, 4, 6], D: [2, 4, 6, 7, 9, 11, 1] };
+const toMidi = (p) => { const m = /^([A-G])(#|b)?(-?\d)$/.exec(p); return STEP[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (+m[3] + 1) * 12; };
+const midiName = (n) => NAMES_SHARP[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+const CH_Q = { '': [0, 4, 7], m: [0, 3, 7], '7': [0, 4, 7, 10], m7: [0, 3, 7, 10], maj7: [0, 4, 7, 11], '5': [0, 7] };
+function chordInfo(name) {
+  const m = /^([A-G])(#|b)?(.*)$/.exec(name);
+  const root = (STEP[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + 12) % 12;
+  return { root, iv: CH_Q[m[3]] || CH_Q[''] };
+}
+function scaleNeighbor(midi, key, dir) {
+  const pcs = KEY_PC[key] || KEY_PC.C;
+  for (let d = 1; d <= 2; d++) { const c = midi + d * dir; if (pcs.includes(((c % 12) + 12) % 12)) return c; }
+  return midi + dir;
+}
+
+/* ---------- ท่าคอร์ด (สายเสียงสูง → ต่ำ, -1 = ไม่ดีด) ---------- */
+const SHAPES = {
+  guitar: {
+    C: [0, 1, 0, 2, 3, -1], G: [3, 0, 0, 0, 2, 3], D: [2, 3, 2, 0, -1, -1], D7: [2, 1, 2, 0, -1, -1],
+    A: [0, 2, 2, 2, 0, -1], A7: [0, 2, 0, 2, 0, -1], Am: [0, 1, 2, 2, 0, -1], E: [0, 0, 1, 2, 2, 0],
+    Em: [0, 0, 0, 2, 2, 0], E7: [0, 0, 1, 0, 2, 0], F: [1, 1, 2, 3, -1, -1], Bm: [2, 3, 4, 4, 2, -1],
+    'F#m': [2, 2, 2, 4, 4, 2], G7: [1, 0, 0, 0, 2, 3], Dm: [1, 3, 2, 0, -1, -1], C7: [0, 1, 3, 2, 3, -1]
+  },
+  ukulele: {
+    C: [3, 0, 0, 0], Am: [0, 0, 0, 2], F: [0, 1, 0, 2], G: [2, 3, 2, 0], D: [0, 2, 2, 2], D7: [3, 2, 2, 2],
+    A: [0, 0, 1, 2], Em: [2, 3, 4, 0], Bm: [2, 2, 2, 4], 'F#m': [0, 2, 1, 2], G7: [2, 1, 2, 0],
+    E7: [2, 0, 2, 1], A7: [0, 0, 1, 0], Dm: [0, 1, 2, 2], C7: [1, 0, 0, 0], E: [2, 4, 4, 4]
+  }
+};
+const TUNING = {
+  guitar: ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'],
+  ukulele: ['A4', 'E4', 'C4', 'G4'],
+  bass: ['G2', 'D2', 'A1', 'E1']
+};
+
+/* ---------- แปลงทำนอง ---------- */
+function parseMelody(src) {
+  return src.split('|').map(bar => bar.trim().split(/\s+/).filter(Boolean).map(tok => {
+    const [p, d] = tok.split('/');
+    const dotted = d.endsWith('.');
+    const den = parseInt(d, 10);
+    const len = (16 / den) * (dotted ? 1.5 : 1); // หน่วย = เขบ็ต 2 ชั้น
+    return { rest: p === 'r', midi: p === 'r' ? null : toMidi(p), len };
+  }));
+}
+const barLen = (ts) => ts[0] * (16 / ts[1]);
+function chordSegments(tune) {
+  const L = barLen(tune.ts);
+  return tune.chords.split('|').map(b => {
+    const names = b.trim().split(/\s+/);
+    return names.map((n, i) => ({ name: n, start: i * L / names.length, len: L / names.length }));
+  });
+}
+
+/* ---------- ตำแหน่งบนคอ (เลือกตำแหน่งที่ 1 ก่อน) ---------- */
+function fretPos(midi, tuning) {
+  const open = tuning.map(toMidi);
+  for (let i = 0; i < open.length; i++) { const f = midi - open[i]; if (f >= 0 && f <= 4) return { s: i + 1, f }; }
+  let best = null;
+  for (let i = 0; i < open.length; i++) { const f = midi - open[i]; if (f >= 0 && f <= 15 && (!best || f < best.f)) best = { s: i + 1, f }; }
+  return best || { s: open.length, f: 0 };
+}
+
+/* ---------- เขียน alphaTex ---------- */
+const DUR = { 1: ['16', false], 2: ['8', false], 3: ['8', true], 4: ['4', false], 6: ['4', true], 8: ['2', false], 12: ['2', true], 16: ['1', false] };
+function splitLen(len) { // แตกความยาวที่เขียนตรงๆ ไม่ได้ (ใช้ในแนวเบส/คอร์ด)
+  const out = []; const opts = [16, 12, 8, 6, 4, 3, 2, 1];
+  while (len > 0) { const o = opts.find(x => x <= len); out.push(o); len -= o; }
+  return out;
+}
+function emitBeats(beats) {
+  // beats: [{len, content, fx:[]}]
+  let cur = null; const out = [];
+  for (const b of beats) {
+    const [d, dotted] = DUR[b.len];
+    if (d !== cur) { out.push(':' + d); cur = d; }
+    const fx = [...(b.fx || [])]; if (dotted) fx.push('d');
+    out.push(b.content + (fx.length ? `{${fx.join(' ')}}` : ''));
+  }
+  return out.join(' ');
+}
+function attachChords(barBeats, segs) {
+  // ใส่ชื่อคอร์ดบนโน้ตตัวแรกที่เริ่ม ณ หรือหลังจุดเปลี่ยนคอร์ด
+  let pos = 0; const starts = barBeats.map(b => { const s = pos; pos += b.len; return s; });
+  for (const seg of segs) {
+    const i = starts.findIndex(s => s >= seg.start);
+    if (i >= 0) (barBeats[i].fx = barBeats[i].fx || []).push(`ch "${seg.name}"`);
+  }
+}
+function chordDefs(names, kind) {
+  const lib = SHAPES[kind];
+  return [...new Set(names)].filter(n => lib[n]).map(n => `\\chord ("${n}" ${lib[n].map(f => f < 0 ? 'x' : f).join(' ')})`).join('\n');
+}
+function header(tune, extra) {
+  const sub = tune.by ? extra.replace(tune.origin, tune.by) : extra;
+  return `\\title "${tune.title}"\n\\subtitle "${sub}"\n\\tempo ${tune.tempo}\n`;
+}
+function staffHead(tune, opts) {
+  let s = `\\staff {${opts.tabs ? 'score tabs' : 'score'}}\n`;
+  if (opts.tuning) s += `\\tuning (${opts.tuning.join(' ')})\n`;
+  if (opts.clef) s += `\\clef ${opts.clef}\n`;
+  s += `\\ts (${tune.ts[0]} ${tune.ts[1]})\n`;
+  if (tune.key !== 'C') s += `\\ks ${tune.key}\n`;
+  if (opts.defs) s += opts.defs + '\n';
+  if (opts.lyrics) s += `\\lyrics "${opts.lyrics}"\n`;
+  return s;
+}
+const allChordNames = (tune) => chordSegments(tune).flat().map(s => s.name);
+
+/* ---------- ทำนอง (ใช้ได้ทุกเครื่องที่มีเสียงสูงต่ำ) ---------- */
+function melodyBars(tune, { shift = 0, tuning = null, variation = null } = {}) {
+  const bars = parseMelody(tune.melody); const segs = chordSegments(tune);
+  return bars.map((bar, bi) => {
+    let beats = [];
+    bar.forEach((n, ni) => {
+      const last = bi === bars.length - 1 && ni === bar.length - 1;
+      const pieces = (!n.rest && variation && !last) ? variation(n.midi + shift, n.len, tune.key) : [{ midi: n.rest ? null : n.midi + shift, len: n.len }];
+      for (const p of pieces) {
+        let content;
+        if (p.midi == null) content = 'r';
+        else if (tuning) { const fp = fretPos(p.midi, tuning); content = `${fp.f}.${fp.s}`; }
+        else content = midiName(p.midi);
+        beats.push({ len: p.len, content, fx: [] });
+      }
+    });
+    attachChords(beats, segs[bi]);
+    return emitBeats(beats);
+  }).join(' |\n');
+}
+// แปรทำนองแบบโมซาร์ท: โน้ตยาวแตกเป็นเขบ็ต 2 ชั้น (โน้ต-บน-โน้ต-ล่าง)
+const mozartVar = (m, len, key) => {
+  if (len % 4 !== 0) return [{ midi: m, len }];
+  const up = scaleNeighbor(m, key, 1), dn = scaleNeighbor(m, key, -1);
+  const out = []; for (let i = 0; i < len / 4; i++) out.push({ midi: m, len: 1 }, { midi: up, len: 1 }, { midi: m, len: 1 }, { midi: dn, len: 1 });
+  return out;
+};
+// ฝึกคันชัก: โน้ตตัวดำ/ตัวขาวแตกเป็นเขบ็ต 1 ชั้น
+const bowVar = (m, len) => (len % 2 === 0 && len >= 4) ? Array.from({ length: len / 2 }, () => ({ midi: m, len: 2 })) : [{ midi: m, len }];
+
+function octaveFor(tune, lo, hi) {
+  const ps = parseMelody(tune.melody).flat().filter(n => !n.rest).map(n => n.midi);
+  let s = 0; while (Math.min(...ps) + s < lo) s += 12; while (Math.max(...ps) + s > hi && Math.min(...ps) + s - 12 >= lo) s -= 12;
+  return s;
+}
+
+/* ---------- เครื่องสาย: เกา และ ตีคอร์ด ---------- */
+function shapeNotes(shape) { return shape.map((f, i) => f < 0 ? null : `${f}.${i + 1}`).filter(Boolean); }
+function strumBars(tune, kind) {
+  const lib = SHAPES[kind];
+  return chordSegments(tune).map(segs => {
+    const beats = [];
+    for (const seg of segs) {
+      const tuple = `(${shapeNotes(lib[seg.name]).join(' ')})`;
+      const q = seg.len / 4; // จำนวนจังหวะตัวดำ
+      const pat = [];
+      for (let i = 0; i < q; i++) {
+        if (q === 1) pat.push([4, 'bd']);
+        else if (i % 2 === 0) pat.push([4, 'bd']);
+        else pat.push([2, 'bd'], [2, 'bu']);
+      }
+      pat.forEach(([len, fx], i) => beats.push({ len, content: tuple, fx: i === 0 ? [`ch "${seg.name}"`, fx] : [fx] }));
+    }
+    return emitBeats(beats);
+  }).join(' |\n');
+}
+function pickBars(tune) {
+  const lib = SHAPES.guitar;
+  return chordSegments(tune).map(segs => {
+    const beats = [];
+    for (const seg of segs) {
+      const sh = lib[seg.name];
+      let bassIdx = sh.length - 1; while (sh[bassIdx] < 0) bassIdx--;
+      const n = (s) => `${sh[s - 1]}.${s}`;
+      const bass = `${sh[bassIdx]}.${bassIdx + 1}`;
+      const seq = [bass, n(3), n(2), n(1), n(2), n(3), n(2), n(1)].slice(0, seg.len / 2);
+      seq.forEach((c, i) => beats.push({ len: 2, content: c, fx: i === 0 ? [`ch "${seg.name}"`] : [] }));
+    }
+    return emitBeats(beats);
+  }).join(' |\n');
+}
+function powerBars(tune) {
+  return chordSegments(tune).map(segs => {
+    const beats = [];
+    for (const seg of segs) {
+      const { root } = chordInfo(seg.name);
+      const fe = (root - 4 + 12) % 12, fa = (root - 9 + 12) % 12;
+      const [s, f] = fe <= fa ? [6, fe] : [5, fa];
+      const nm = NAMES_SHARP[root] + '5';
+      const tuple = `(${f}.${s} ${f + 2}.${s - 1} ${f + 2}.${s - 2})`;
+      const cnt = seg.len / 2;
+      for (let i = 0; i < cnt; i++) beats.push({ len: 2, content: tuple, fx: i === 0 ? [`ch "${nm}"`] : [] });
+    }
+    return emitBeats(beats);
+  }).join(' |\n');
+}
+function powerDefs(tune) {
+  const out = new Set();
+  return [...new Set(allChordNames(tune))].map(n => {
+    const { root } = chordInfo(n);
+    const fe = (root - 4 + 12) % 12, fa = (root - 9 + 12) % 12;
+    const nm = NAMES_SHARP[root] + '5'; if (out.has(nm)) return ''; out.add(nm);
+    const arr = fe <= fa ? ['x', 'x', 'x', fe + 2, fe + 2, fe] : ['x', 'x', fa + 2, fa + 2, fa, 'x'];
+    return `\\chord ("${nm}" ${arr.join(' ')})`;
+  }).filter(Boolean).join('\n');
+}
+
+/* ---------- เบส ---------- */
+function bassBars(tune, walk) {
+  const tun = TUNING.bass;
+  return chordSegments(tune).map(segs => {
+    const beats = [];
+    for (const seg of segs) {
+      const { root } = chordInfo(seg.name);
+      const r = 28 + ((root - 4 + 12) % 12);
+      const q = seg.len / 4;
+      const seq = walk ? [r, r + 7, r + 12, r + 7].slice(0, q) : Array(q).fill(r);
+      seq.forEach((m, i) => { const p = fretPos(m, tun); beats.push({ len: 4, content: `${p.f}.${p.s}`, fx: i === 0 ? [`ch "${seg.name}"`] : [] }); });
+    }
+    return emitBeats(beats);
+  }).join(' |\n');
+}
+
+/* ---------- เปียโนมือซ้าย ---------- */
+function lhBars(tune, style) {
+  return chordSegments(tune).map(segs => {
+    const beats = [];
+    for (const seg of segs) {
+      const { root, iv } = chordInfo(seg.name);
+      const r = 48 + root - (root > 7 ? 12 : 0); // รากราว C3
+      const tri = iv.slice(0, 3).map(i => r + i);
+      if (style === 'block') {
+        splitLen(seg.len).forEach(l => beats.push({ len: l, content: `(${tri.map(midiName).join(' ')})` }));
+      } else { // alberti: ราก-5-3-5
+        const pat = [tri[0], tri[2], tri[1], tri[2]];
+        for (let i = 0; i < seg.len / 2; i++) beats.push({ len: 2, content: midiName(pat[i % 4]) });
+      }
+    }
+    return emitBeats(beats);
+  }).join(' |\n');
+}
+
+/* ---------- ประกอบเป็นเวอร์ชัน ---------- */
+const SHORT = { 'piano:easy': 'มือขวา', 'piano:mid': 'สองมือ', 'piano:hard': 'แปรทำนอง', 'violin:easy': 'ทำนอง', 'violin:bow': 'ฝึกคันชัก', 'bass:root': 'รากคอร์ด', 'bass:walk': 'ราก-5-ออกเทฟ' };
+function versionsFor(tune, cat) {
+  const names = allChordNames(tune);
+  const V = [];
+  if (cat === 'piano') {
+    const rhShift = octaveFor(tune, 55, 84);
+    V.push({ id: 'easy', label: 'ง่าย', note: 'มือขวาเล่นทำนองอย่างเดียว', views: ['chord', 'score'],
+      tip: 'ใช้มือขวามือเดียว นิ้วโป้งวางที่โด (C) แล้วไล่นิ้วตามโน้ต ร้องชื่อโน้ตไปพร้อมกันจะจำได้เร็วขึ้น',
+      tex: header(tune, tune.origin) + `\\track "เปียโน"\n\\instrument 0\n` + staffHead(tune, { clef: 'G2', lyrics: tune.lyrics }) + melodyBars(tune, { shift: rhShift }) });
+    V.push({ id: 'mid', label: 'ปานกลาง', note: 'มือขวาทำนอง มือซ้ายกดคอร์ด', views: ['chord', 'score'],
+      tip: 'ฝึกมือซ้ายกดคอร์ดค้างให้คล่องก่อน แล้วค่อยเล่นพร้อมมือขวา ตอนเปลี่ยนคอร์ดให้มือซ้ายย้ายก่อนถึงจังหวะ',
+      tex: header(tune, tune.origin) + `\\track "เปียโน"\n\\instrument 0\n` + staffHead(tune, { clef: 'G2', lyrics: tune.lyrics }) + melodyBars(tune, { shift: rhShift }) +
+        '\n' + staffHead(tune, { clef: 'F4' }) + lhBars(tune, 'block') });
+    V.push({ id: 'hard', label: 'ยาก', note: tune.id === 'twinkle' ? 'แปรทำนองแบบโมซาร์ท + มือซ้ายอัลแบร์ตี' : 'แปรทำนองเขบ็ต 2 ชั้น + มือซ้ายอัลแบร์ตี', views: ['chord', 'score'],
+      tip: 'มือขวาเล่นโน้ตหลัก-โน้ตบน-โน้ตหลัก-โน้ตล่าง ให้เท่ากันทุกตัว เริ่มที่ความเร็ว 0.5× ก่อน มือซ้ายเล่นราก-5-3-5 (อัลแบร์ตีเบส) ให้เบากว่ามือขวา',
+      tex: header(tune, tune.origin) + `\\track "เปียโน"\n\\instrument 0\n` + staffHead(tune, { clef: 'G2' }) + melodyBars(tune, { shift: rhShift, variation: mozartVar }) +
+        '\n' + staffHead(tune, { clef: 'F4' }) + lhBars(tune, 'alberti') });
+  }
+  if (cat === 'acoustic') {
+    const sh = octaveFor(tune, 40, 72);
+    const defs = chordDefs(names, 'guitar');
+    V.push({ id: 'melody', label: 'ทำนอง', level: 'ง่าย', note: 'ดีดทำนองทีละโน้ต', views: ['tab', 'chord', 'score'],
+      tip: 'ดีดทีละโน้ตตามตัวเลขใน Tab ใช้นิ้ว 1 กดเฟรต 1 นิ้ว 2 กดเฟรต 2 ไล่ไป มือขวาสลับดีดลง-ขึ้น',
+      tex: header(tune, tune.origin) + `\\track "กีตาร์โปร่ง"\n\\instrument 25\n` + staffHead(tune, { tabs: true, tuning: TUNING.guitar, defs, lyrics: tune.lyrics }) + melodyBars(tune, { shift: sh, tuning: TUNING.guitar }) });
+    V.push({ id: 'pick', label: 'เกา', level: 'ปานกลาง', note: 'เกาสายไล่คอร์ด (Arpeggio)', views: ['tab', 'chord', 'score'],
+      tip: 'นิ้วโป้งเกาสายเบส (โน้ตตัวแรกของแต่ละคอร์ด) นิ้วชี้ สายที่ 3 นิ้วกลาง สายที่ 2 นิ้วนาง สายที่ 1 กดคอร์ดค้างไว้ทั้งห้อง',
+      tex: header(tune, 'เกาสาย · ' + tune.origin) + `\\track "กีตาร์โปร่ง"\n\\instrument 25\n` + staffHead(tune, { tabs: true, tuning: TUNING.guitar, defs }) + pickBars(tune) });
+    V.push({ id: 'strum', label: 'ตีคอร์ด', level: 'ง่าย', note: 'ตีคอร์ดจังหวะ ลง / ลง-ขึ้น', views: ['tab', 'chord', 'score'],
+      tip: 'ลูกศรลงคือตีลง ลูกศรขึ้นคือตีขึ้น ข้อมือขยับตลอดแม้จังหวะที่ไม่โดนสาย จะทำให้จังหวะนิ่ง',
+      tex: header(tune, 'ตีคอร์ด · ' + tune.origin) + `\\track "กีตาร์โปร่ง"\n\\instrument 25\n` + staffHead(tune, { tabs: true, tuning: TUNING.guitar, defs }) + strumBars(tune, 'guitar') });
+  }
+  if (cat === 'ukulele') {
+    const sh = octaveFor(tune, 60, 81);
+    const defs = chordDefs(names, 'ukulele');
+    V.push({ id: 'strum', label: 'ตีคอร์ด', level: 'ง่าย', note: 'ตีคอร์ดจังหวะ ลง / ลง-ขึ้น', views: ['tab', 'chord', 'score'],
+      tip: 'ใช้นิ้วชี้ตีลงด้วยเล็บ ตีขึ้นด้วยเนื้อนิ้ว ตีเบาๆ บริเวณปลายคอจะได้เสียงนุ่ม',
+      tex: header(tune, 'ตีคอร์ด · ' + tune.origin) + `\\track "อูคูเลเล่"\n\\instrument 24\n` + staffHead(tune, { tabs: true, tuning: TUNING.ukulele, defs }) + strumBars(tune, 'ukulele') });
+    V.push({ id: 'melody', label: 'ทำนอง', level: 'ปานกลาง', note: 'ดีดทำนองทีละโน้ต', views: ['tab', 'chord', 'score'],
+      tip: 'สายบนสุดของอูคูเลเล่ (G) เสียงสูงกว่าสาย C ระวังอย่าสับสนกับกีตาร์',
+      tex: header(tune, tune.origin) + `\\track "อูคูเลเล่"\n\\instrument 24\n` + staffHead(tune, { tabs: true, tuning: TUNING.ukulele, defs, lyrics: tune.lyrics }) + melodyBars(tune, { shift: sh, tuning: TUNING.ukulele }) });
+  }
+  if (cat === 'violin') {
+    const sh = octaveFor(tune, 55, 88);
+    V.push({ id: 'easy', label: 'ง่าย', note: 'ทำนองตามต้นฉบับ', views: ['chord', 'score'],
+      tip: 'ใช้คันชักเต็มคันในโน้ตตัวขาว ครึ่งคันในโน้ตตัวดำ ฟังเสียงตัวเองว่าตรงกับเสียงในคลิปไหม',
+      tex: header(tune, tune.origin) + `\\track "ไวโอลิน"\n\\instrument 40\n` + staffHead(tune, { lyrics: tune.lyrics }) + melodyBars(tune, { shift: sh }) });
+    V.push({ id: 'bow', label: 'ปานกลาง', note: 'แตกโน้ตเป็นเขบ็ต 1 ชั้น ฝึกคันชัก', views: ['chord', 'score'],
+      tip: 'โน้ตแต่ละตัวสีสองครั้ง ลง-ขึ้น ใช้คันชักสั้นๆ ช่วงกลางคัน ข้อมือผ่อนคลาย',
+      tex: header(tune, 'ฝึกคันชัก · ' + tune.origin) + `\\track "ไวโอลิน"\n\\instrument 40\n` + staffHead(tune, {}) + melodyBars(tune, { shift: sh, variation: bowVar }) });
+  }
+  if (cat === 'bass') {
+    V.push({ id: 'root', label: 'ง่าย', note: 'เล่นรากคอร์ดตัวดำ', views: ['tab', 'chord', 'score'],
+      tip: 'เล่นโน้ตรากของคอร์ดจังหวะละครั้ง สลับนิ้วชี้-นิ้วกลาง ให้ทุกตัวดังเท่ากัน',
+      tex: header(tune, 'เบส · ' + tune.origin) + `\\track "เบส"\n\\instrument 33\n` + staffHead(tune, { tabs: true, tuning: TUNING.bass, clef: 'F4' }) + bassBars(tune, false) });
+    V.push({ id: 'walk', label: 'ปานกลาง', note: 'ราก-5-ออกเทฟ', views: ['tab', 'chord', 'score'],
+      tip: 'แพตเทิร์นราก-ขั้นที่ 5-ออกเทฟ-ขั้นที่ 5 ใช้ได้กับเกือบทุกเพลง จำรูปมือไว้แล้วย้ายตามคอร์ด',
+      tex: header(tune, 'เบส · ' + tune.origin) + `\\track "เบส"\n\\instrument 33\n` + staffHead(tune, { tabs: true, tuning: TUNING.bass, clef: 'F4' }) + bassBars(tune, true) });
+  }
+  if (cat === 'electric') {
+    const sh = octaveFor(tune, 40, 76);
+    V.push({ id: 'melody', label: 'ทำนอง', level: 'ง่าย', note: 'ทำนองเสียงคลีน', views: ['tab', 'chord', 'score'],
+      tip: 'ใช้ปิ๊กดีดลง-ขึ้นสลับกัน มือซ้ายยกนิ้วพอพ้นสาย อย่ายกสูง',
+      tex: header(tune, tune.origin) + `\\track "กีตาร์ไฟฟ้า"\n\\instrument 27\n` + staffHead(tune, { tabs: true, tuning: TUNING.guitar, defs: chordDefs(names, 'guitar') }) + melodyBars(tune, { shift: sh, tuning: TUNING.guitar }) });
+    V.push({ id: 'power', label: 'พาวเวอร์คอร์ด', level: 'ปานกลาง', note: 'ริธึมพาวเวอร์คอร์ดเขบ็ต 1 ชั้น', views: ['tab', 'chord', 'score'],
+      tip: 'พาวเวอร์คอร์ดใช้รูปมือเดียวย้ายไปทั้งคอ นิ้ว 1 กดราก นิ้ว 3-4 กดสองสายถัดไป ดีดลงทุกตัว',
+      tex: header(tune, 'พาวเวอร์คอร์ด · ' + tune.origin) + `\\track "กีตาร์ไฟฟ้า"\n\\instrument 30\n` + staffHead(tune, { tabs: true, tuning: TUNING.guitar, defs: powerDefs(tune) }) + powerBars(tune) });
+  }
+  return V.map(v => ({ ...v, tempo: tune.tempo, level: v.level || v.label, short: SHORT[cat + ':' + v.id] || v.level || v.label }));
+}
+
+/* ---------- แบบฝึกหัดต้นฉบับของครู (เขียน alphaTex ตรงๆ) ---------- */
+const EXERCISES = [
+  { id: 'ex-chords', cat: 'acoustic', title: 'แบบฝึกเปลี่ยนคอร์ด G–C–D–Em', origin: 'แบบฝึกหัดโดยครู', tune: { title: 'แบบฝึกเปลี่ยนคอร์ด', origin: 'แบบฝึกหัดโดยครู', ts: [4, 4], tempo: 80, key: 'C', chords: 'G | C | D | Em | G | C | D | G' } },
+  { id: 'ex-riff', cat: 'electric', title: 'ริฟฟ์พาวเวอร์คอร์ด E–G–A', origin: 'แบบฝึกหัดโดยครู', tune: { title: 'ริฟฟ์พาวเวอร์คอร์ด', origin: 'แบบฝึกหัดโดยครู', ts: [4, 4], tempo: 108, key: 'C', chords: 'E | G A | E | D A | E | G A | E | E' } },
+  { id: 'ex-groove', cat: 'bass', title: 'เบสไลน์ฝึกจังหวะ E–A–C–D', origin: 'แบบฝึกหัดโดยครู', tune: { title: 'เบสไลน์ฝึกจังหวะ', origin: 'แบบฝึกหัดโดยครู', ts: [4, 4], tempo: 92, key: 'C', chords: 'E | E | A | A | C | D | E | E' } }
+];
+function exerciseVersions(ex) {
+  return exerciseVersionsRaw(ex).map(v => ({ ...v, short: SHORT[ex.cat + ':' + v.id] || v.level }));
+}
+function exerciseVersionsRaw(ex) {
+  const t = ex.tune;
+  if (ex.cat === 'acoustic') {
+    const defs = chordDefs(allChordNames(t), 'guitar');
+    return [
+      { id: 'strum', label: 'ตีคอร์ด', level: 'ง่าย', note: 'ลง / ลง-ขึ้น', views: ['tab', 'chord', 'score'], tempo: t.tempo,
+        tip: 'เปลี่ยนคอร์ดให้ทันก่อนขึ้นห้องใหม่ ถ้ายังไม่ทันให้ลดความเร็วเหลือ 0.5×',
+        tex: header(t, t.origin) + `\\track "กีตาร์โปร่ง"\n\\instrument 25\n` + staffHead(t, { tabs: true, tuning: TUNING.guitar, defs }) + strumBars(t, 'guitar') },
+      { id: 'pick', label: 'เกา', level: 'ปานกลาง', note: 'เกาสายไล่คอร์ด', views: ['tab', 'chord', 'score'], tempo: t.tempo,
+        tip: 'นิ้วโป้งเกาสายเบส นิ้วชี้-กลาง-นาง เกาสาย 3-2-1 ตามลำดับ',
+        tex: header(t, t.origin) + `\\track "กีตาร์โปร่ง"\n\\instrument 25\n` + staffHead(t, { tabs: true, tuning: TUNING.guitar, defs }) + pickBars(t) }
+    ];
+  }
+  if (ex.cat === 'electric') return [{ id: 'power', label: 'พาวเวอร์คอร์ด', level: 'ปานกลาง', note: 'เขบ็ต 1 ชั้น', views: ['tab', 'chord', 'score'], tempo: t.tempo,
+    tip: 'ดีดลงทุกตัว ใช้สันมือแตะสายเบาๆ ให้เสียงแน่น',
+    tex: header(t, t.origin) + `\\track "กีตาร์ไฟฟ้า"\n\\instrument 30\n` + staffHead(t, { tabs: true, tuning: TUNING.guitar, defs: powerDefs(t) }) + powerBars(t) }];
+  return [
+    { id: 'root', label: 'ง่าย', note: 'รากคอร์ดตัวดำ', views: ['tab', 'chord', 'score'], tempo: t.tempo, tip: 'สลับนิ้วชี้-กลางทุกตัว ให้ดังเท่ากัน',
+      tex: header(t, t.origin) + `\\track "เบส"\n\\instrument 33\n` + staffHead(t, { tabs: true, tuning: TUNING.bass, clef: 'F4' }) + bassBars(t, false) },
+    { id: 'walk', label: 'ปานกลาง', note: 'ราก-5-ออกเทฟ', views: ['tab', 'chord', 'score'], tempo: t.tempo, tip: 'จำรูปมือราก-5-ออกเทฟ แล้วย้ายตามคอร์ด',
+      tex: header(t, t.origin) + `\\track "เบส"\n\\instrument 33\n` + staffHead(t, { tabs: true, tuning: TUNING.bass, clef: 'F4' }) + bassBars(t, true) }
+  ];
+}
+
+/* ---------- รวมเป็นรายการเพลงของเว็บ ---------- */
+const SONGS = [];
+for (const t of TUNES) for (const cat of t.on) SONGS.push({ id: `${t.id}-${cat}`, tune: t.id, cat, title: t.title, subtitle: t.origin, tempo: t.tempo, ts: t.ts, versions: versionsFor(t, cat) });
+for (const ex of EXERCISES) SONGS.push({ id: ex.id, tune: ex.id, cat: ex.cat, title: ex.title, subtitle: ex.origin, tempo: ex.tune.tempo, ts: ex.tune.ts, versions: exerciseVersions(ex) });
+
+
+</script>
+<script>
+/* ============ ตั้งค่า ============ */
+const BRAND = { name: 'ห้องดนตรีครูตั้ม', sub: 'เลือกเครื่องดนตรี เลือกเพลง เลือกระดับ แล้วเล่นตามคลิปพร้อม Tab คอร์ด และโน้ต' };
+const AT_VERSION = '1.9.0';
+const AT_BASE = window.AT_BASE || `https://cdn.jsdelivr.net/npm/@coderline/alphatab@${AT_VERSION}/dist/`;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============ ไอคอน ============ */
+const guitarSil = (o) => {
+  const { lr = 10, ur = 7.5, neck = 15, hole = false, rot = 38, pick = false } = o;
+  const ly = 35, uy = ly - lr - ur * 0.55, top = uy - ur - neck;
+  return `<svg viewBox="0 0 48 48" aria-hidden="true"><g transform="rotate(${rot} 24 26)" fill="currentColor">
+    <circle cx="24" cy="${ly}" r="${lr}"/><circle cx="24" cy="${uy}" r="${ur}"/>
+    <rect x="22.4" y="${top}" width="3.2" height="${neck + 2}" rx="1"/><rect x="21.2" y="${top - 5}" width="5.6" height="6" rx="1.6"/>
+    ${hole ? `<circle cx="24" cy="${uy + 2.2}" r="2.6" fill="var(--card)"/>` : ''}
+    ${pick ? `<rect x="19.5" y="${ly - 3}" width="9" height="1.8" rx=".9" fill="var(--card)"/><rect x="19.5" y="${ly + 1}" width="9" height="1.8" rx=".9" fill="var(--card)"/>` : ''}
+    <rect x="20.5" y="${ly + lr * 0.45}" width="7" height="1.6" rx=".8" fill="var(--card)"/></g></svg>`;
+};
+const ICONS = {
+  acoustic: guitarSil({ hole: true }),
+  electric: guitarSil({ lr: 9.2, ur: 6.4, neck: 16, pick: true, rot: 34 }),
+  bass: guitarSil({ lr: 8.6, ur: 6, neck: 20, pick: true, rot: 40 }),
+  ukulele: guitarSil({ lr: 7.6, ur: 5.6, neck: 10, hole: true, rot: 36 }),
+  piano: `<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="5" y="12" width="38" height="25" rx="3" fill="none" stroke="currentColor" stroke-width="2.4"/><g stroke="currentColor" stroke-width="1.6">${[11.3, 17.7, 24, 30.3, 36.6].map(x => `<line x1="${x}" y1="13" x2="${x}" y2="36"/>`).join('')}</g><g fill="currentColor">${[9.6, 15.9, 26.4, 32.7, 39].map(x => `<rect x="${x - 1.6}" y="13" width="3.6" height="13" rx=".8"/>`).join('')}</g></svg>`,
+  violin: `<svg viewBox="0 0 48 48" aria-hidden="true"><g transform="rotate(-30 24 24)" fill="currentColor"><ellipse cx="24" cy="34" rx="8.5" ry="7.5"/><ellipse cx="24" cy="23" rx="7" ry="6"/><rect x="18" y="27" width="12" height="3" fill="var(--card)" rx="1.5"/><rect x="22.6" y="6" width="2.8" height="14" rx="1"/><circle cx="24" cy="5" r="2.8"/></g><line x1="9" y1="40" x2="41" y2="9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  drums: `<svg viewBox="0 0 48 48" aria-hidden="true"><ellipse cx="24" cy="22" rx="14" ry="5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M10 22v12c0 2.8 6.3 5 14 5s14-2.2 14-5V22" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M14 9l9 11M34 9l-9 11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`
+};
+const UI = {
+  back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`,
+  home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>`,
+  search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>`,
+  play: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l12-7.2a1 1 0 0 0 0-1.72l-12-7.2A1 1 0 0 0 7 4.8z"/></svg>`,
+  pause: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4.2" height="15" rx="1.2"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.2"/></svg>`,
+  restart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14"/><path d="M19 6l-9 6 9 6z" fill="currentColor"/></svg>`,
+  loop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>`,
+  metro: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l4 18H5z"/><path d="M12 15l5-8"/></svg>`,
+  tab: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M3 10h18M3 14h18M3 18h18"/><circle cx="8" cy="10" r="1.6" fill="currentColor"/><circle cx="15" cy="14" r="1.6" fill="currentColor"/></svg>`,
+  chord: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M5 8h14M5 13h14M10 3v18M14 3v18"/><circle cx="10" cy="10.5" r="1.6" fill="currentColor"/><circle cx="14" cy="15.5" r="1.6" fill="currentColor"/></svg>`,
+  score: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M3 9h18M3 12h18M3 15h18M3 18h18" opacity=".5"/><ellipse cx="9" cy="16" rx="2.4" ry="1.8" fill="currentColor"/><path d="M11.2 16V5l5 2"/></svg>`,
+  tip: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg>`,
+  upload: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>`,
+  arrow: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>`
+};
+
+const CATS = [
+  { id: 'acoustic', th: 'กีตาร์โปร่ง', en: 'Acoustic guitar' },
+  { id: 'piano', th: 'เปียโน', en: 'Piano' },
+  { id: 'electric', th: 'กีตาร์ไฟฟ้า', en: 'Electric guitar' },
+  { id: 'bass', th: 'เบส', en: 'Bass' },
+  { id: 'violin', th: 'ไวโอลิน', en: 'Violin' },
+  { id: 'ukulele', th: 'อูคูเลเล่', en: 'Ukulele' },
+  { id: 'drums', th: 'กลอง', en: 'Drums', soon: true }
+];
+const VIEW_LABEL = { tab: 'Tab', chord: 'คอร์ด', score: 'โน้ต' };
+const FRETTED = ['acoustic', 'electric', 'ukulele'];
+const STRINGS = { acoustic: ['E', 'B', 'G', 'D', 'A', 'E'], electric: ['E', 'B', 'G', 'D', 'A', 'E'], ukulele: ['A', 'E', 'C', 'G'], bass: ['G', 'D', 'A', 'E'], violin: ['E', 'A', 'D', 'G'] };
+const VIOLIN_OPEN = [76, 69, 62, 55]; // E5 A4 D4 G3
+
+/* ============ ตัวช่วย ============ */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const catOf = (id) => CATS.find(c => c.id === id);
+const replay = (el, cls) => { if (!el || REDUCED) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+let toastTimer;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600); }
+
+/* ---------- ทฤษฎีคอร์ด ---------- */
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const QUALITY = { '': [0, 4, 7], m: [0, 3, 7], '7': [0, 4, 7, 10], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10], '5': [0, 7], sus4: [0, 5, 7], dim: [0, 3, 6] };
+function parseChord(name) {
+  const m = /^([A-G])([#b]?)(.*)$/.exec(name || ''); if (!m) return null;
+  const root = (PC[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + 12) % 12;
+  const iv = QUALITY[m[3]] || QUALITY[''];
+  return { root, tones: iv.map(i => (root + i) % 12), intervals: iv };
+}
+function tonesFor(name) { const p = parseChord(name); return p ? p.tones.map(t => NOTE_NAMES[t]) : []; }
+
+/* ---------- ไดอะแกรมคอร์ด ---------- */
+function fretSVG(chord, opt = {}) {
+  const strings = chord.strings || []; const n = strings.length; if (!n) return '';
+  const used = strings.filter(f => f > 0); const maxF = used.length ? Math.max(...used) : 0;
+  const base = maxF > 4 ? Math.min(...used) : 1;
+  const x0 = 20, x1 = 100, y0 = 28, rows = 4, fh = 22, dx = (x1 - x0) / (n - 1);
+  const col = opt.color || 'var(--accent)';
+  let s = `<svg viewBox="0 0 120 128" role="img" aria-label="ตำแหน่งนิ้วคอร์ด ${esc(chord.name)}">`;
+  s += `<rect x="${x0}" y="${y0 - (base === 1 ? 3.5 : 0)}" width="${x1 - x0}" height="${base === 1 ? 4 : 1.2}" fill="var(--text)" opacity=".75"/>`;
+  for (let r = 0; r <= rows; r++) s += `<line x1="${x0}" x2="${x1}" y1="${y0 + r * fh}" y2="${y0 + r * fh}" stroke="var(--faint)"/>`;
+  for (let i = 0; i < n; i++) s += `<line x1="${x0 + i * dx}" x2="${x0 + i * dx}" y1="${y0}" y2="${y0 + rows * fh}" stroke="var(--faint)" stroke-width="1.2"/>`;
+  if (base > 1) s += `<text x="${x1 + 6}" y="${y0 + fh * .65}" font-size="11" fill="var(--muted)">${base}fr</text>`;
+  let k = 0;
+  strings.forEach((f, idx) => {
+    const x = x0 + (n - 1 - idx) * dx;
+    if (f < 0) s += `<text x="${x}" y="${y0 - 9}" font-size="12" text-anchor="middle" fill="var(--muted)">×</text>`;
+    else if (f === 0) s += `<circle cx="${x}" cy="${y0 - 13}" r="4" fill="none" stroke="var(--muted)" stroke-width="1.4"/>`;
+    else s += `<circle class="dot" style="animation-delay:${(k++) * 60}ms" cx="${x}" cy="${y0 + (f - base) * fh + fh / 2}" r="7.5" fill="${col}"/>`;
+  });
+  return s + '</svg>';
+}
+function pianoSVG(name, opt = {}) {
+  const p = parseChord(name); if (!p) return '';
+  const whites = [0, 2, 4, 5, 7, 9, 11], blacks = [1, 3, 6, 8, 10];
+  const lit = new Set(p.intervals.map(i => p.root + i));
+  const W = 196, H = 92, ww = W / 14; const col = opt.color || 'var(--accent)';
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="คีย์เปียโนคอร์ด ${esc(name)}">`;
+  for (let o = 0; o < 2; o++) whites.forEach((pc, i) => { const k = o * 12 + pc; s += `<rect x="${(o * 7 + i) * ww + .5}" y=".5" width="${ww - 1}" height="${H - 1}" rx="3" fill="${lit.has(k) ? col : '#f6f3ec'}" stroke="#8a857a" stroke-width=".8"/>`; });
+  for (let o = 0; o < 2; o++) blacks.forEach(pc => { const k = o * 12 + pc; const wi = whites.filter(w => w < pc).length; s += `<rect x="${(o * 7 + wi) * ww - ww * .32}" y=".5" width="${ww * .64}" height="${H * .6}" rx="2" fill="${lit.has(k) ? col : '#24221f'}"/>`; });
+  return s + '</svg>';
+}
+function bassSVG(name, opt = {}) {
+  const p = parseChord(name); if (!p) return '';
+  const open = [4, 9, 2, 7], frets = 5, x0 = 14, x1 = 186, y0 = 14, gap = 18, fw = (x1 - x0) / frets; const col = opt.color || 'var(--accent)';
+  let s = `<svg viewBox="0 0 200 ${y0 * 2 + gap * 3}" role="img" aria-label="ตำแหน่งโน้ตรากของ ${esc(name)} บนเบส">`;
+  s += `<rect x="${x0 - 3}" y="${y0 - 2}" width="4" height="${gap * 3 + 4}" fill="var(--text)" opacity=".7"/>`;
+  for (let f = 1; f <= frets; f++) s += `<line x1="${x0 + f * fw}" x2="${x0 + f * fw}" y1="${y0}" y2="${y0 + gap * 3}" stroke="var(--faint)"/>`;
+  for (let i = 0; i < 4; i++) s += `<line x1="${x0}" x2="${x1}" y1="${y0 + (3 - i) * gap}" y2="${y0 + (3 - i) * gap}" stroke="var(--faint)" stroke-width="${1.6 - i * .25}"/>`;
+  open.forEach((o, i) => {
+    const f = (p.root - o + 12) % 12; if (f > frets) return; const y = y0 + (3 - i) * gap;
+    s += f === 0 ? `<circle cx="${x0 - 9}" cy="${y}" r="5" fill="none" stroke="${col}" stroke-width="2"/>` : `<circle class="dot" cx="${x0 + (f - .5) * fw}" cy="${y}" r="7" fill="${col}"/>`;
+  });
+  return s + '</svg>';
+}
+function diagramFor(cat, chord, opt) {
+  if (!chord) return '';
+  if (FRETTED.includes(cat) && chord.strings && chord.strings.length) return fretSVG(chord, opt);
+  if (cat === 'bass') return bassSVG(chord.name, opt);
+  return pianoSVG(chord.name, opt);
+}
+
+/* ============ เวทีจำลอง: คอกีตาร์ / คีย์บอร์ด ที่ไฟติดตามโน้ต ============ */
+const VIZ = { W: 640, kind: null, n: 0, x0: 0, fw: 0, y0: 0, gap: 0, lo: 0, hi: 0, keys: {} };
+function buildViz(cat, notesRange) {
+  const host = $('#viz'); if (!host) return;
+  const W = VIZ.W;
+  const defs = `<defs><radialGradient id="hitgrad" cx="35%" cy="35%"><stop offset="0" stop-color="#ffe2a6"/><stop offset="1" stop-color="#f08a3c"/></radialGradient></defs>`;
+  if (cat === 'piano') {
+    // ช่วงคีย์ตามโน้ตในเพลง (อย่างน้อย 2 ออกเทฟ)
+    let lo = Math.floor((notesRange[0] ?? 48) / 12) * 12, hi = Math.ceil(((notesRange[1] ?? 72) + 1) / 12) * 12;
+    while (hi - lo < 24) hi += 12; if (hi - lo > 48) lo = hi - 48;
+    const whites = []; for (let m = lo; m < hi; m++) if (![1, 3, 6, 8, 10].includes(m % 12)) whites.push(m);
+    const ww = (W - 40) / whites.length, H = 150, x0 = 20;
+    let s = `<svg viewBox="0 0 ${W} ${H + 24}" aria-hidden="true">${defs}`;
+    s += `<rect x="${x0 - 8}" y="0" width="${W - 2 * x0 + 16}" height="${H + 12}" rx="10" fill="#0d0c0b"/>`;
+    VIZ.keys = {};
+    whites.forEach((m, i) => { const x = x0 + i * ww; s += `<rect class="k-w" data-k="${m}" x="${x + 1}" y="6" width="${ww - 2}" height="${H}" rx="4"/>`; s += `<rect class="k-glow" data-g="${m}" x="${x + 1}" y="${H - 30}" width="${ww - 2}" height="36" rx="4"/>`; if (m % 12 === 0) s += `<text x="${x + ww / 2}" y="${H - 4}" text-anchor="middle" font-size="11" fill="#8a8172">C${Math.floor(m / 12) - 1}</text>`; VIZ.keys[m] = x; });
+    for (let m = lo; m < hi; m++) if ([1, 3, 6, 8, 10].includes(m % 12)) { const wi = whites.filter(w => w < m).length; const x = x0 + wi * ww - ww * .32; s += `<rect class="k-b" data-k="${m}" x="${x}" y="6" width="${ww * .64}" height="${H * .6}" rx="3"/>`; }
+    host.innerHTML = s + '</svg>';
+    Object.assign(VIZ, { kind: 'keys', lo, hi });
+    return;
+  }
+  const labels = STRINGS[cat] || STRINGS.acoustic; const n = labels.length;
+  const fretless = cat === 'violin';
+  const frets = fretless ? 8 : 12, x0 = 62, x1 = W - 16, fw = (x1 - x0) / frets;
+  const gap = n === 6 ? 22 : 28, y0 = 18, H = y0 * 2 + gap * (n - 1);
+  let s = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">${defs}`;
+  s += `<rect class="fb-wood" x="${x0}" y="4" width="${x1 - x0}" height="${H - 8}" rx="6" ${fretless ? 'style="fill:#17110c"' : ''}/>`;
+  s += `<rect class="fb-nut" x="${x0 - 5}" y="4" width="6" height="${H - 8}" rx="2"/>`;
+  if (!fretless) {
+    for (let f = 1; f <= frets; f++) s += `<line class="fb-fret" x1="${x0 + f * fw}" x2="${x0 + f * fw}" y1="6" y2="${H - 6}"/>`;
+    [3, 5, 7, 9].forEach(f => s += `<circle class="fb-inlay" cx="${x0 + (f - .5) * fw}" cy="${H / 2}" r="5"/>`);
+    s += `<circle class="fb-inlay" cx="${x0 + 11.5 * fw}" cy="${H / 2 - gap}" r="5"/><circle class="fb-inlay" cx="${x0 + 11.5 * fw}" cy="${H / 2 + gap}" r="5"/>`;
+  } else {
+    for (let f = 1; f <= 4; f++) s += `<line x1="${x0 + (f * 2 - .5) * fw}" x2="${x0 + (f * 2 - .5) * fw}" y1="6" y2="${H - 6}" stroke="#3a2c20" stroke-dasharray="3 5"/>`;
+  }
+  labels.forEach((l, r) => {
+    const y = y0 + r * gap;
+    s += `<text class="fb-lab" x="${x0 - 44}" y="${y + 4.5}" text-anchor="middle">${l}</text>`;
+    s += `<line class="fb-str" data-r="${r}" x1="${x0 - 2}" x2="${x1}" y1="${y}" y2="${y}" stroke-width="${1 + r * (2 / n)}"/>`;
+  });
+  s += `<g id="ghost"></g><g id="hits"></g></svg>`;
+  host.innerHTML = s;
+  Object.assign(VIZ, { kind: 'board', n, x0, fw, y0, gap, fretless });
+}
+function vizGhost(chord) {
+  const g = $('#ghost'); if (!g || VIZ.kind !== 'board') return;
+  if (!chord || !chord.strings || chord.strings.length !== VIZ.n) { g.innerHTML = ''; return; }
+  g.innerHTML = chord.strings.map((f, r) => f > 0 ? `<circle class="ghost" cx="${VIZ.x0 + (f - .5) * VIZ.fw}" cy="${VIZ.y0 + r * VIZ.gap}" r="9"/>` : '').join('');
+}
+function vizHit(beats) {
+  if (!VIZ.kind) return;
+  if (VIZ.kind === 'keys') {
+    $$('#viz .down').forEach(e => e.classList.remove('down'));
+    for (const b of beats) for (const nt of b.notes) {
+      const m = nt.realValue; const k = $(`#viz [data-k="${m}"]`); if (k) k.classList.add('down');
+      const g = $(`#viz [data-g="${m}"]`); replay(g, 'on');
+    }
+    return;
+  }
+  const hits = $('#hits'); if (!hits) return;
+  let s = '';
+  for (const b of beats) for (const nt of b.notes) {
+    let row, f;
+    if (VIZ.fretless) { // ไวโอลิน: หาสายจากระดับเสียง
+      const m = nt.realValue; row = VIOLIN_OPEN.findIndex(o => m - o >= 0 && m - o <= 7); if (row < 0) row = m < 55 ? 3 : 0;
+      f = m - VIOLIN_OPEN[row];
+    } else { row = VIZ.n - nt.string; f = nt.fret; }
+    if (row < 0 || row >= VIZ.n) continue;
+    const y = VIZ.y0 + row * VIZ.gap;
+    const x = f === 0 ? VIZ.x0 - 22 : VIZ.x0 + (f - .5) * VIZ.fw;
+    s += `<g class="hit"><circle class="hit-ring" cx="${x}" cy="${y}" r="10"/><circle class="hit-dot" cx="${x}" cy="${y}" r="${f === 0 ? 9 : 11}"/>${f > 0 ? `<text class="hit-txt" x="${x}" y="${y}">${f}</text>` : ''}</g>`;
+    replay($(`#viz .fb-str[data-r="${row}"]`), 'vib');
+  }
+  hits.innerHTML = s;
+}
+
+/* ============ หน้า ============ */
+const app = $('#app');
+let player = null;
+
+function topbar(title, sub, back) {
+  return `<header class="topbar"><div class="in">
+    ${back ? `<a class="iconbtn" href="${back}" aria-label="ย้อนกลับ">${UI.back}</a>` : ''}
+    <div class="tb-title"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</div>
+    ${back ? `<a class="iconbtn" href="#/" aria-label="หน้าแรก">${UI.home}</a>` : ''}
+  </div></header>`;
+}
+function songRow(s, i = 0, showCat = false) {
+  const c = catOf(s.cat);
+  return `<a class="song reveal" style="--i:${i}" href="#/song/${s.id}">
+    <div class="thumb">${UI.play}</div>
+    <div class="meta"><b>${esc(s.title)}</b><small>${esc(s.subtitle)}</small>
+      <div class="tags">${s.versions.map(v => `<span class="tag ac">${esc(v.label)}</span>`).join('')}<span class="tag">${s.tempo} BPM</span>${showCat ? `<span class="tag">${esc(c.th)}</span>` : ''}</div>
+    </div>${UI.arrow}</a>`;
+}
+function floatingNotes(n = 10) {
+  const glyphs = ['♪', '♫', '♩', '♬']; let seed = 3; const r = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  return `<div class="notesfx" aria-hidden="true">${Array.from({ length: n }, () => `<span style="left:${(r() * 100).toFixed(1)}%;--fs:${14 + r() * 16 | 0}px;--dur:${7 + r() * 7}s;--delay:-${(r() * 12).toFixed(1)}s;--dx:${(r() * 60 - 30) | 0}px;--rot:${(r() * 60 - 30) | 0}deg">${glyphs[r() * 4 | 0]}</span>`).join('')}</div>`;
+}
+
+function renderHome() {
+  document.title = BRAND.name;
+  const tunes = [...new Set(SONGS.map(s => s.tune))].map(t => SONGS.filter(s => s.tune === t));
+  const versions = SONGS.reduce((a, s) => a + s.versions.length, 0);
+  app.innerHTML = `
+  <div class="wrap">
+    <section class="hero">
+      ${floatingNotes()}
+      <div class="brandmark reveal">${ICONS.acoustic}<span>${esc(BRAND.name)}</span></div>
+      <h1 class="reveal" style="--i:1">วันนี้อยาก<em>ซ้อมเครื่องไหน?</em></h1>
+      <p class="reveal" style="--i:2">${esc(BRAND.sub)}</p>
+      <div class="stats reveal" style="--i:3"><div><b data-count="${tunes.length}">0</b>เพลง</div><div><b data-count="${CATS.filter(c => !c.soon).length}">0</b>เครื่องดนตรี</div><div><b data-count="${versions}">0</b>แบบฝึก</div></div>
+      <div class="search reveal" style="--i:4">${UI.search}<input id="q" type="search" placeholder="ค้นหาเพลง เช่น Twinkle, Canon" autocomplete="off" aria-label="ค้นหาเพลง"></div>
+    </section>
+    <div id="homebody"></div>
+    <a class="footer-link reveal" style="--i:12" href="#/teacher"><span><b>สำหรับครู</b> · ตัวอย่างหน้าเพิ่มเพลงใหม่</span>${UI.arrow}</a>
+  </div>`;
+  countUp();
+  const body = $('#homebody');
+  const draw = (q) => {
+    q = q.trim().toLowerCase();
+    if (q) {
+      const hits = SONGS.filter(s => (s.title + ' ' + s.subtitle + ' ' + catOf(s.cat).th + ' ' + catOf(s.cat).en).toLowerCase().includes(q));
+      body.innerHTML = `<div class="sec-h"><h2>ผลการค้นหา</h2><span>${hits.length} รายการ</span></div>` +
+        (hits.length ? `<div class="songs">${hits.map((s, i) => songRow(s, i, true)).join('')}</div>` : `<div class="empty">ไม่พบเพลงที่ค้นหา ลองพิมพ์ชื่อเพลงหรือชื่อเครื่องดนตรี</div>`);
+      return;
+    }
+    body.innerHTML = `<div class="sec-h reveal" style="--i:5"><h2>หมวดเครื่องดนตรี</h2><span>แตะเพื่อดูเพลง</span></div>
+      <div class="grid">${CATS.map((c, i) => {
+        const n = SONGS.filter(s => s.cat === c.id).length;
+        return `<a class="cat reveal ${c.soon ? 'soon' : ''}" style="--i:${i + 5}" href="#/cat/${c.id}" ${c.soon ? 'aria-disabled="true" tabindex="-1"' : ''}>
+          <span class="count">${c.soon ? 'เร็วๆ นี้' : n + ' เพลง'}</span><div class="ic">${ICONS[c.id]}</div>
+          <div><b>${esc(c.th)}</b><small>${esc(c.en)}</small></div></a>`;
+      }).join('')}</div>
+      <div class="sec-h reveal" style="--i:11"><h2>เพลงเดียว เล่นได้หลายเครื่อง</h2><span>ปัดดูเพิ่ม →</span></div>
+      <div class="rail-x">${tunes.filter(g => g.length > 1).map((g, i) => `<a class="tunecard reveal" style="--i:${i + 11}" href="#/song/${g[0].id}"><b>${esc(g[0].title)}</b><small>${esc(g[0].subtitle)}</small><div class="mini-ic">${g.map(s => `<span title="${esc(catOf(s.cat).th)}">${ICONS[s.cat]}</span>`).join('')}</div></a>`).join('')}</div>`;
+  };
+  draw('');
+  $('#q').addEventListener('input', e => draw(e.target.value));
+}
+function countUp() {
+  $$('[data-count]').forEach(el => {
+    const to = +el.dataset.count; if (REDUCED) { el.textContent = to; return; }
+    const t0 = performance.now(), d = 900;
+    const tick = (t) => { const p = Math.min(1, (t - t0) / d); el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(tick); };
+    setTimeout(() => requestAnimationFrame(tick), 250);
+  });
+}
+
+function renderCat(id) {
+  const c = catOf(id); if (!c) return renderHome();
+  document.title = `${c.th} · ${BRAND.name}`;
+  const list = SONGS.filter(s => s.cat === id);
+  app.innerHTML = topbar(c.th, BRAND.name, '#/') + `
+  <div class="wrap">
+    <div class="cat-head reveal"><div class="ic">${ICONS[id]}</div><div><h1>${esc(c.th)}</h1><p>${list.length} เพลง · แต่ละเพลงเลือกระดับหรือรูปแบบการเล่นได้</p></div></div>
+    <div class="songs">${list.length ? list.map((s, i) => songRow(s, i + 1)).join('') : '<div class="empty">ครูยังไม่ได้ลงเพลงในหมวดนี้</div>'}</div>
+  </div>`;
+}
+
+/* ---------- หน้าเพลง ---------- */
+function renderSong(id, verId) {
+  const song = SONGS.find(s => s.id === id); if (!song) return renderHome();
+  const c = catOf(song.cat);
+  const ver = song.versions.find(v => v.id === verId) || song.versions[0];
+  document.title = `${song.title} · ${BRAND.name}`;
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const others = SONGS.filter(s => s.tune === song.tune && s.id !== song.id);
+  const sameCat = SONGS.filter(s => s.cat === song.cat && s.tune !== song.tune).slice(0, 4);
+  const multi = song.versions.length > 1;
+
+  app.innerHTML = topbar(song.title, c.th, `#/cat/${song.cat}`) + `
+  <div class="wrap">
+    <div class="stage reveal" id="stage">
+      <span class="chip"><i></i>คลิปตัวอย่าง · เสียงสังเคราะห์</span>
+      <span class="nowchord" id="vchord"></span>
+      <div class="label"><b>${esc(song.title)}</b><span id="vlabel">${esc(ver.label)} · คลิปครูจะแสดงตรงนี้</span></div>
+      <div class="viz" id="viz"></div>
+      <button class="bigplay" id="bigplay" aria-label="เล่น">${UI.play}</button>
+      <div class="bot"><div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div><span id="vtc">0:00</span></div>
+    </div>
+
+    ${multi ? `<div class="vers reveal" style="--i:1"><div class="lab"><span>${song.cat === 'piano' || song.cat === 'violin' || song.cat === 'bass' ? 'เลือกระดับ' : 'เลือกรูปแบบการเล่น'}</span><span>${song.versions.length} แบบ</span></div>
+      <div class="chips" id="chips" role="tablist"><span class="ind" id="vind"></span>${song.versions.map(v => `<button role="tab" data-ver="${v.id}"><b>${esc(v.label)}</b><small>${esc(v.short)}</small></button>`).join('')}</div>
+      <p class="vnote" id="vnote"></p></div>` : ''}
+
+    <div class="transport reveal" style="--i:2">
+      <button class="playbtn" id="play" aria-label="เล่น" disabled><span class="spin"></span>${UI.play}</button>
+      <div class="seekwrap">
+        <input class="seek" id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="ตำแหน่งเพลง">
+        <div class="times"><span id="tcur">0:00</span><span id="tend">0:00</span></div>
+      </div>
+    </div>
+    <div class="status" id="status">กำลังเตรียมเสียง…</div>
+    <div class="opts reveal" style="--i:3">
+      <div class="speed" role="group" aria-label="ความเร็ว">${[0.5, 0.75, 1].map(v => `<button data-sp="${v}" class="${v === 1 ? 'on' : ''}">${v}×</button>`).join('')}</div>
+      <button class="pill" id="loop" aria-pressed="false">${UI.loop}วนซ้ำ</button>
+      <button class="pill" id="metro" aria-pressed="false">${UI.metro}เมโทรนอม</button>
+      <button class="pill" id="restart" aria-label="กลับไปต้นเพลง">${UI.restart}ต้นเพลง</button>
+    </div>
+    ${isIOS ? `<p class="hint">ไม่มีเสียง? ปิดโหมดเงียบ (สวิตช์ข้างเครื่อง) แล้วกดเล่นใหม่</p>` : ''}
+
+    <div class="seg reveal" style="--i:4" role="tablist" aria-label="รูปแบบการแสดงผล"><span class="ind" id="sind"></span>
+      ${['tab', 'chord', 'score'].map(v => `<button role="tab" data-view="${v}">${UI[v]}${VIEW_LABEL[v]}</button>`).join('')}
+    </div>
+    <p class="hint" id="viewhint"></p>
+
+    <div class="cv" id="cv" hidden>
+      <div class="strip" id="strip"><div class="rail" id="rail"></div></div>
+      <div class="now">
+        <div class="l"><small>คอร์ดตอนนี้</small><div class="name" id="cname">–</div><div class="next" id="cnext"></div></div>
+        <div class="d" id="cdiag"></div>
+      </div>
+      <div class="tones" id="ctones"></div>
+      <div class="sec-h"><h2>คอร์ดทั้งหมดในเพลง</h2><span>แตะเพื่อข้ามไป</span></div>
+      <div class="allch" id="allch"></div>
+    </div>
+
+    <div class="paper reveal" style="--i:5" id="paper">
+      <div class="loading" id="loading"><i></i><i></i><i></i></div>
+      <div class="scroll" id="scroll"><div id="at"></div></div>
+    </div>
+
+    <div class="facts reveal" style="--i:6">
+      <div class="fact"><small>ระดับ</small><b id="flevel"></b></div>
+      <div class="fact"><small>ความเร็ว</small><b id="ftempo"></b></div>
+      <div class="fact"><small>จังหวะ</small><b>${song.ts[0]}/${song.ts[1]}</b></div>
+    </div>
+    <div class="card reveal" style="--i:7"><h3>${UI.tip}คำแนะนำจากครู</h3><p id="ftip"></p></div>
+    ${others.length ? `<div class="sec-h"><h2>เพลงนี้ในเครื่องอื่น</h2></div><div class="other-inst">${others.map(o => `<a href="#/song/${o.id}"><span>${ICONS[o.cat]}</span>${esc(catOf(o.cat).th)}</a>`).join('')}</div>` : ''}
+    ${sameCat.length ? `<div class="sec-h"><h2>เพลงอื่นใน${esc(c.th)}</h2></div><div class="songs">${sameCat.map((s, i) => songRow(s, i)).join('')}</div>` : ''}
+  </div>`;
+
+  ensureAlphaTab().then(() => setupPlayer(song, ver)).catch(err => {
+    console.error(err);
+    $('#loading').innerHTML = '<p style="color:#6a655b;margin:auto">โหลดตัววาดโน้ตไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่</p>';
+    $('#status').textContent = '';
+  });
+}
+
+let atPromise = null;
+function ensureAlphaTab() {
+  if (window.alphaTab) return Promise.resolve();
+  if (atPromise) return atPromise;
+  atPromise = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = AT_BASE + 'alphaTab.min.js';
+    s.onload = () => res(); s.onerror = () => { atPromise = null; rej(new Error('alphaTab load failed')); };
+    document.head.appendChild(s);
+  });
+  return atPromise;
+}
+
+function moveIndicator(container, ind, btn) {
+  if (!container || !ind || !btn) return;
+  ind.style.width = btn.offsetWidth + 'px';
+  ind.style.transform = `translateX(${btn.offsetLeft}px)`;
+}
+
+function setupPlayer(song, ver) {
+  const at = window.alphaTab;
+  const el = $('#at'), scrollEl = $('#scroll');
+  const api = new at.AlphaTabApi(el, {
+    core: { fontDirectory: AT_BASE + 'font/', enableLazyLoading: false, useWorkers: false, logLevel: 'warning' },
+    display: { scale: 0.82, staveProfile: at.StaveProfile.Tab, layoutMode: at.LayoutMode.Horizontal },
+    player: {
+      playerMode: at.PlayerMode.EnabledSynthesizer, soundFont: AT_BASE + 'soundfont/sonivox.sf3',
+      scrollElement: scrollEl, scrollMode: at.ScrollMode.Continuous,
+      enableCursor: true, enableAnimatedBeatCursor: true, enableUserInteraction: true, scrollOffsetX: -24, scrollOffsetY: -40
+    }
+  });
+  const st = player = { song, ver, api, view: null, segs: [], endTick: 0, segIdx: -1, playing: false, seeking: false, pxPerTick: 34 / 960 };
+
+  api.soundFontLoad.on(e => { if (e.total) $('#status').textContent = `กำลังโหลดเสียง ${Math.round(e.loaded / e.total * 100)}%`; });
+  api.playerReady.on(() => { $('#play').disabled = false; $('#status').textContent = 'พร้อมเล่น · แตะโน้ตเพื่อข้ามไปตรงนั้น'; });
+  api.renderStarted.on(() => { $('#loading').hidden = false; });
+  api.renderFinished.on(() => { $('#loading').hidden = true; });
+
+  api.scoreLoaded.on(score => {
+    const staff = score.tracks[0].staves[0];
+    const segs = []; let last = 0; let lo = 127, hi = 0;
+    score.tracks[0].staves.forEach(sf => sf.bars.forEach(bar => bar.voices[0].beats.forEach(beat => beat.notes.forEach(n => { lo = Math.min(lo, n.realValue); hi = Math.max(hi, n.realValue); }))));
+    for (const bar of staff.bars) for (const beat of bar.voices[0].beats) {
+      const end = beat.absolutePlaybackStart + beat.playbackDuration; if (end > last) last = end;
+      if (beat.chord && beat.chord.name) {
+        const prev = segs[segs.length - 1];
+        if (prev && prev.name === beat.chord.name) continue;
+        segs.push({ name: beat.chord.name, chord: beat.chord, start: beat.absolutePlaybackStart });
+      }
+    }
+    segs.forEach((s, i) => s.end = i < segs.length - 1 ? segs[i + 1].start : last);
+    st.segs = segs; st.endTick = last;
+    buildViz(song.cat, [lo, hi]);
+    buildChordView();
+  });
+
+  api.playerStateChanged.on(e => {
+    st.playing = e.state === 1;
+    $('#stage').classList.toggle('playing', st.playing);
+    const b = $('#play'); b.classList.toggle('playing', st.playing && !REDUCED);
+    b.innerHTML = `<span class="spin"></span>${st.playing ? UI.pause : UI.play}`; b.setAttribute('aria-label', st.playing ? 'หยุดชั่วคราว' : 'เล่น');
+    if (!st.playing) { const h = $('#hits'); if (h) h.innerHTML = ''; $$('#viz .down').forEach(k => k.classList.remove('down')); }
+  });
+  api.playerPositionChanged.on(e => {
+    $('#tend').textContent = fmt(e.endTime); $('#tcur').textContent = fmt(e.currentTime);
+    $('#vtc').textContent = `${fmt(e.currentTime)} / ${fmt(e.endTime)}`;
+    if (!st.seeking) { const sk = $('#seek'); sk.max = Math.max(1, Math.round(e.endTime)); sk.value = Math.round(e.currentTime); sk.style.setProperty('--p', (e.currentTime / Math.max(1, e.endTime) * 100) + '%'); }
+    updateChord(e.currentTick);
+  });
+  api.activeBeatsChanged.on(e => { if (st.playing) vizHit(e.activeBeats); });
+
+  const toggle = () => { if ($('#play').disabled) { toast('กำลังโหลดเสียง รอสักครู่'); return; } api.playPause(); };
+  $('#play').onclick = toggle; $('#bigplay').onclick = toggle;
+  $('#restart').onclick = () => { api.stop(); updateChord(0); };
+  const seek = $('#seek');
+  seek.addEventListener('input', () => { st.seeking = true; $('#tcur').textContent = fmt(+seek.value); seek.style.setProperty('--p', (+seek.value / +seek.max * 100) + '%'); });
+  seek.addEventListener('change', () => { api.timePosition = +seek.value; st.seeking = false; });
+  $$('.speed button').forEach(b => b.onclick = () => { api.playbackSpeed = +b.dataset.sp; $$('.speed button').forEach(x => x.classList.toggle('on', x === b)); toast(`ความเร็ว ${b.dataset.sp}×`); });
+  $('#loop').onclick = (e) => { api.isLooping = !api.isLooping; e.currentTarget.classList.toggle('on', api.isLooping); e.currentTarget.setAttribute('aria-pressed', api.isLooping); toast(api.isLooping ? 'เปิดวนซ้ำ · ลากคลุมโน้ตเพื่อวนเฉพาะท่อน' : 'ปิดวนซ้ำ'); };
+  $('#metro').onclick = (e) => { const on = api.metronomeVolume > 0; api.metronomeVolume = on ? 0 : 1; e.currentTarget.classList.toggle('on', !on); e.currentTarget.setAttribute('aria-pressed', !on); };
+  $$('.seg button[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
+  $$('#chips button').forEach(b => b.onclick = () => setVersion(b.dataset.ver));
+  window.addEventListener('resize', syncIndicators);
+
+  applyVersion(ver, true);
+  api.tex(ver.tex);
+}
+function syncIndicators() {
+  const st = player; if (!st) return;
+  moveIndicator($('#chips'), $('#vind'), $(`#chips button[data-ver="${st.ver.id}"]`));
+  const i = ['tab', 'chord', 'score'].indexOf(st.view); const ind = $('#sind'); if (ind) ind.style.transform = `translateX(${i * 100}%)`;
+}
+function applyVersion(ver, initial) {
+  const st = player; st.ver = ver;
+  $$('#chips button').forEach(b => { const on = b.dataset.ver === ver.id; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+  const note = $('#vnote'); if (note) { note.textContent = `${ver.note} · ระดับ${ver.level}`; replay(note, 'swap'); }
+  $('#vlabel').textContent = `${ver.label} · คลิปครูจะแสดงตรงนี้`;
+  $('#flevel').textContent = ver.level; $('#ftempo').textContent = `${ver.tempo} BPM`; $('#ftip').textContent = ver.tip;
+  $$('.seg button[data-view]').forEach(b => { const ok = ver.views.includes(b.dataset.view); b.disabled = !ok; b.title = ok ? '' : 'ไม่มีสำหรับเครื่องนี้'; });
+  const want = st.view && ver.views.includes(st.view) ? st.view : (ver.views.includes('tab') ? 'tab' : 'score');
+  setView(want, initial);
+  requestAnimationFrame(syncIndicators);
+}
+function setVersion(id) {
+  const st = player; if (!st || st.ver.id === id) return;
+  const ver = st.song.versions.find(v => v.id === id); if (!ver) return;
+  st.api.stop();
+  applyVersion(ver);
+  replay($('#paper'), 'swap');
+  st.api.tex(ver.tex);
+  history.replaceState(null, '', `#/song/${st.song.id}/${id}`);
+}
+
+const VIEW_HINT = {
+  tab: 'Tab เลื่อนตามเสียง · ตัวเลขคือเฟรตที่ต้องกด · แตะโน้ตเพื่อข้าม ลากคลุมเพื่อเลือกท่อนวน',
+  score: 'โน้ตสากลพร้อมชื่อคอร์ด · แถบเหลืองคือห้องที่กำลังเล่น',
+  chord: 'แถบสีคือคอร์ดตามเวลา เส้นแดงคือตำแหน่งปัจจุบัน · แตะคอร์ดเพื่อข้ามไป'
+};
+function setView(v, initial) {
+  const st = player; if (!st) return;
+  const at = window.alphaTab, api = st.api;
+  if (!st.ver.views.includes(v)) return;
+  const prev = st.view; st.view = v;
+  $$('.seg button[data-view]').forEach(b => { const on = b.dataset.view === v; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+  syncIndicators();
+  $('#viewhint').textContent = VIEW_HINT[v];
+  const paper = $('#paper');
+  $('#cv').hidden = v !== 'chord';
+  paper.classList.toggle('offstage', v === 'chord');
+  paper.classList.toggle('tabmode', v === 'tab');
+  if (v === 'chord') { if (!initial) replay($('#cv'), 'reveal'); centerPlayhead(); return; }
+  const want = v === 'tab' ? { p: at.StaveProfile.Tab, l: at.LayoutMode.Horizontal } : { p: at.StaveProfile.Score, l: at.LayoutMode.Page };
+  const s = api.settings, els = s.notation.elements, showHead = v === 'score';
+  [at.NotationElement.ScoreTitle, at.NotationElement.ScoreSubTitle, at.NotationElement.ScoreWordsAndMusic].forEach(k => els.set(k, showHead));
+  [at.NotationElement.GuitarTuning, at.NotationElement.TrackNames, at.NotationElement.ChordDiagrams, at.NotationElement.EffectDynamics].forEach(k => els.set(k, false));
+  const narrow = window.innerWidth < 480;
+  const same = s.display.staveProfile === want.p && s.display.layoutMode === want.l;
+  s.display.staveProfile = want.p; s.display.layoutMode = want.l;
+  s.display.barsPerRow = (v === 'score' && narrow) ? 2 : -1;
+  s.display.scale = v === 'score' ? (narrow ? 0.72 : 0.9) : (narrow ? 0.82 : 0.95);
+  if (initial || (same && prev !== 'chord')) return;
+  replay(paper, 'swap');
+  api.updateSettings();
+  if (api.score) api.render();
+}
+
+function buildChordView() {
+  const st = player, cat = st.song.cat; const rail = $('#rail');
+  if (!st.segs.length) { rail.innerHTML = ''; $('#cname').textContent = '–'; return; }
+  rail.style.width = Math.max(st.endTick * st.pxPerTick, $('#strip').clientWidth || 300) + 'px';
+  rail.innerHTML = st.segs.map((s, i) => `<button class="s" data-i="${i}" style="width:${(s.end - s.start) * st.pxPerTick}px" aria-label="ข้ามไปคอร์ด ${esc(s.name)}">${esc(s.name)}</button>`).join('') + '<div class="ph" id="ph"></div>';
+  $$('#rail .s').forEach(b => b.onclick = () => { const s = st.segs[+b.dataset.i]; st.api.tickPosition = s.start; updateChord(s.start); });
+  const uniq = []; const seen = new Set();
+  st.segs.forEach(s => { if (!seen.has(s.name)) { seen.add(s.name); uniq.push(s); } });
+  $('#allch').innerHTML = uniq.map(s => `<button data-n="${esc(s.name)}"><b>${esc(s.name)}</b>${diagramFor(cat, s.chord, FRETTED.includes(cat) ? { color: 'var(--text)' } : undefined)}</button>`).join('');
+  $$('#allch button').forEach(b => b.onclick = () => { const s = st.segs.find(x => x.name === b.dataset.n); st.api.tickPosition = s.start; updateChord(s.start); });
+  st.segIdx = -1; updateChord(0);
+}
+function updateChord(tick) {
+  const st = player; if (!st || !st.segs.length) return;
+  let i = st.segs.findIndex(s => tick >= s.start && tick < s.end);
+  if (i < 0) i = tick >= st.endTick ? st.segs.length - 1 : 0;
+  const ph = $('#ph'); if (ph) ph.style.transform = `translateX(${tick * st.pxPerTick}px)`;
+  if (st.view === 'chord') centerPlayhead();
+  if (i === st.segIdx) return;
+  st.segIdx = i;
+  const s = st.segs[i], n = st.segs[i + 1];
+  const v = $('#vchord'); v.textContent = s.name; replay(v, 'flip');
+  const nm = $('#cname'); nm.textContent = s.name; replay(nm, 'flip');
+  $('#cnext').innerHTML = n ? `ถัดไป: <b>${esc(n.name)}</b>` : 'คอร์ดสุดท้าย';
+  $('#cdiag').innerHTML = diagramFor(st.song.cat, s.chord);
+  $('#ctones').innerHTML = FRETTED.includes(st.song.cat) ? '' : tonesFor(s.name).map((t, k) => `<span style="animation-delay:${k * 60}ms">${t}</span>`).join('');
+  $$('#rail .s').forEach((b, k) => b.classList.toggle('on', k === i));
+  $$('#allch button').forEach(b => b.classList.toggle('on', b.dataset.n === s.name));
+  vizGhost(s.chord);
+}
+function centerPlayhead() {
+  const strip = $('#strip'), ph = $('#ph'), st = player; if (!strip || !ph || !st) return;
+  const x = (st.api.tickPosition || 0) * st.pxPerTick;
+  const target = x - strip.clientWidth * 0.35;
+  if (Math.abs(strip.scrollLeft - target) > 4) strip.scrollLeft = target;
+}
+
+/* ---------- หน้าครู (ตัวอย่าง) ---------- */
+function renderTeacher() {
+  document.title = `สำหรับครู · ${BRAND.name}`;
+  let bars = ''; let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < 120; i++) { const h = 8 + rnd() * 60 * (0.55 + 0.45 * Math.sin(i / 7) ** 2); bars += `<rect x="${i * 5 + 1}" y="${48 - h / 2}" width="3" height="${h}" rx="1.5" fill="var(--faint)"/>`; }
+  let marks = '';
+  for (let b = 0; b < 8; b++) { const x = 12 + b * 74, pin = b === 0 || b === 4; marks += `<line x1="${x}" x2="${x}" y1="0" y2="96" stroke="${pin ? 'var(--accent)' : 'var(--line-2)'}" stroke-width="${pin ? 2 : 1}"/><rect x="${x - 9}" y="2" width="18" height="16" rx="4" fill="${pin ? 'var(--accent)' : 'var(--card-2)'}"/><text x="${x}" y="14" font-size="10" text-anchor="middle" fill="${pin ? 'var(--accent-ink)' : 'var(--muted)'}">${b + 1}</text>`; }
+  app.innerHTML = topbar('เพิ่มเพลงใหม่', 'สำหรับครู', '#/') + `
+  <div class="wrap">
+    <div class="banner reveal">หน้านี้เป็นตัวอย่างหน้าจอสำหรับครู ยังบันทึกจริงไม่ได้</div>
+    <section class="step reveal" style="--i:1"><h3><i>1</i>ข้อมูลเพลง</h3>
+      <div class="field"><label for="t-cat">หมวดเครื่องดนตรี</label><select id="t-cat">${CATS.filter(c => !c.soon).map(c => `<option>${c.th}</option>`).join('')}</select></div>
+      <div class="field"><label for="t-name">ชื่อเพลง</label><input id="t-name" placeholder="Twinkle Twinkle Little Star"></div>
+      <div class="field"><label for="t-tip">คำแนะนำถึงนักเรียน</label><textarea id="t-tip" rows="3" placeholder="ฝึกช้าๆ ก่อน แล้วค่อยเพิ่มความเร็ว"></textarea></div>
+    </section>
+    <section class="step reveal" style="--i:2"><h3><i>2</i>เพิ่มเวอร์ชัน</h3>
+      <p class="hint" style="margin:0 0 4px">หนึ่งเพลงมีได้หลายเวอร์ชัน แต่ละเวอร์ชันมีคลิปและไฟล์โน้ตของตัวเอง</p>
+      <div class="vlist"><label><input type="checkbox" checked> ง่าย</label><label><input type="checkbox" checked> ปานกลาง</label><label><input type="checkbox"> ยาก</label><label><input type="checkbox"> ทำนอง</label><label><input type="checkbox"> เกา</label><label><input type="checkbox"> ตีคอร์ด</label></div>
+    </section>
+    <section class="step reveal" style="--i:3"><h3><i>3</i>อัปโหลดคลิป</h3>
+      <div class="drop">${UI.upload}<b>แตะเพื่อเลือกคลิปจากมือถือ</b>ไฟล์ .mp4 หรือ .mov ระบบแปลงไฟล์ให้ดูลื่นทุกเน็ตอัตโนมัติ</div>
+    </section>
+    <section class="step reveal" style="--i:4"><h3><i>4</i>ไฟล์โน้ต</h3>
+      <div class="drop">${UI.upload}<b>เลือกไฟล์จาก Guitar Pro หรือ MuseScore</b>.gp · .gpx · .musicxml — ไฟล์เดียวได้ทั้ง Tab คอร์ด และโน้ต</div>
+    </section>
+    <section class="step reveal" style="--i:5"><h3><i>5</i>ซิงก์โน้ตกับคลิป</h3>
+      <p class="hint" style="margin:0 0 8px">ลากหมุดสีเหลืองให้ตรงจังหวะในคลิป ห้องอื่นจะเรียงตามจังหวะเพลงให้อัตโนมัติ</p>
+      <div class="wave"><svg viewBox="0 0 600 96" preserveAspectRatio="none" aria-hidden="true">${bars}${marks}</svg></div>
+    </section>
+    <button class="primary reveal" style="--i:6" id="pub">บันทึกและเผยแพร่</button>
+  </div>`;
+  $('#pub').onclick = () => toast('ต้นแบบ: ปุ่มนี้จะบันทึกเพลงขึ้นเว็บในเวอร์ชันจริง');
+}
+
+/* ============ เส้นทาง ============ */
+function route() {
+  if (player) { try { player.api.destroy(); } catch (e) { } player = null; window.removeEventListener('resize', syncIndicators); }
+  const h = location.hash.replace(/^#/, '') || '/';
+  const [, a, b, c] = h.split('/');
+  const go = () => {
+    window.scrollTo(0, 0);
+    if (a === 'cat') renderCat(b);
+    else if (a === 'song') renderSong(b, c);
+    else if (a === 'teacher') renderTeacher();
+    else renderHome();
+  };
+  if (document.startViewTransition && !REDUCED && route.ready) document.startViewTransition(go); else go();
+  route.ready = true;
+}
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>
